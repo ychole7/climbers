@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#ead8c2"><title>꼬물클라임 · V18 시안 적용 플레이 빌드</title>
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#ead8c2"><title>영차영차 등반대 · 화면 정리 테스트</title>
 <style>
 /* Commercial Alpha UI adjustments */
 .footer .settings{width:52px;flex:none;font-size:22px;background:#fff3df}
@@ -256,67 +256,37 @@ body{background:radial-gradient(circle at 50% 20%,#dff3ed,#96a99d 70%)}
 
 
 
-/* V18 — the original approved concept is the visual reference; gameplay remains interactive. */
-.app{background:#c9b49a url('assets/scenery/reference-gym.webp') center center / cover no-repeat!important}
-.room{background:linear-gradient(90deg,#7b4b2f77,transparent 15% 85%,#77513580)!important;pointer-events:none}
-.room:before{display:none!important}
-.window,.wall-logo,.wall-deco,.tip,.route-legend{display:none!important}
-.wall{inset:clamp(121px,16.5%,148px) 12% 69px!important;border-radius:27px 27px 16px 16px!important;border:7px solid #d7b99a!important;background:linear-gradient(110deg,#f8e6d4ee,#f1dfcbee 43%,#e7d2bcee 78%,#fff1deee)!important;box-shadow:inset 12px 0 28px #fff8,inset -15px 0 15px #92745648,0 10px 8px #684a3790,0 0 0 2px #fff6d3!important;overflow:hidden}
-.wall:before{opacity:.44!important;background-image:linear-gradient(77deg,transparent 49%,#bda69140 49.6%,transparent 50.3%),linear-gradient(0deg,transparent 49.7%,#bdab9540 50%,transparent 50.3%),radial-gradient(#977c6840 1px,transparent 2.3px)!important;background-size:129px 128px,129px 128px,58px 73px!important}
-.wall:after{height:100%!important;background:radial-gradient(ellipse 70% 42% at 34% 8%,#fff9e3aa,transparent),linear-gradient(155deg,#fff7e722,transparent 50%,#9b82701b)!important}
-.vine{top:clamp(128px,17%,160px)!important;left:12%!important;right:12%!important;border-top:11px solid #729349!important;z-index:6!important;filter:drop-shadow(0 3px 3px #58492f7a)}
-.vine:after{content:'🍃 🍃 🍃 🍃'!important;letter-spacing:5px!important;font-size:18px!important}
-#gymLights{top:16%!important;left:12%!important;right:12%!important}
-.play{inset:clamp(181px,22%,208px) 16% 137px!important;z-index:9!important}
-.title-flag{top:clamp(155px,18%,178px)!important;z-index:11!important;font-size:32px!important;filter:drop-shadow(0 3px 4px #cf8c3e)}
-.hud{top:calc(env(safe-area-inset-top,0px) + 14px)!important;left:8px!important;right:8px!important;gap:6px!important;z-index:18!important}
-.hud .pill{border-radius:19px!important;padding:10px 8px!important;background:linear-gradient(#fffdf6,#fce8d1)!important;border:2px solid #fff9ec!important;box-shadow:0 4px 0 #b58e6d,0 8px 16px #47302055!important;min-height:91px}
-.hud .pill .small{font-size:12px!important;color:#63442e!important}
-.hud .pill .big{font-size:21px!important;color:#8d4e25!important;text-shadow:0 1px #fff!important}
-.hud .pill:nth-child(2) .big{font-size:28px!important;color:#cf8425!important}
-.hud .pill .sub{font-size:9px!important}
-.balance-track{margin-top:12px!important;height:15px!important;background:linear-gradient(90deg,#df767c 0 16%,#fac475 16% 34%,#7dc891 34% 66%,#d9d665 66% 81%,#81bde5 81%)!important}
-.balance-dot{background:#9c7052!important;width:23px!important;height:23px!important;border:3px solid #fff7e6!important;box-shadow:0 2px 3px #74513f99!important}
-.grip{top:calc(env(safe-area-inset-top,0px) + 112px)!important;right:12px!important;z-index:19!important;padding:5px 10px!important}
-.toast{top:calc(env(safe-area-inset-top,0px) + 119px)!important;min-width:0!important;width:max-content;max-width:72%!important;font-size:11px!important;padding:7px 11px!important;z-index:20!important}
-.hold{width:clamp(40px,14vw,67px)!important;height:clamp(30px,9vw,42px)!important;border:2px solid #fff2d7!important;filter:drop-shadow(0 2px 2px #5b433a3b)!important;box-shadow:inset 7px 8px 7px #ffffff72,inset -9px -9px 8px #32200e55,0 5px 0 #5c443e80,0 9px 8px #33201466!important;isolation:isolate}
-.hold:after{width:11px!important;height:11px!important;left:calc(50% - 5.5px)!important;top:calc(50% - 5.5px)!important;border:2px solid #d5d3c9!important;background:radial-gradient(circle at 45% 42%,#242c33 0 41%,#78828b 50%,#b3ac9b 70%)!important;box-shadow:inset 1px 2px 2px #18181899,0 1px 1px #fff8!important}
-.hold.jug{background:linear-gradient(155deg,#ffd765,#e9a725 65%,#c58b1f)!important;border-radius:46% 52% 38% 43%!important}
-.hold.crimp{background:linear-gradient(155deg,#fa96a3,#d95678 65%,#b33c57)!important;border-radius:48% 23% 35% 22%!important;height:26px!important;transform:translate(-50%,-50%) rotate(-12deg)}
-.hold.sloper{background:linear-gradient(155deg,#a9e6ff,#4e9bd9 70%,#376cad)!important;border-radius:55% 52% 49% 44%!important;width:clamp(43px,15vw,72px)!important;height:clamp(34px,10vw,48px)!important}
-.hold.volume{background:linear-gradient(140deg,#e1d4ca 0 37%,#a89ea5 37% 68%,#797781 68%)!important;clip-path:polygon(48% 0,100% 86%,2% 100%);width:70px!important;height:60px!important;border-radius:9px!important}
-.hold.goal{background:linear-gradient(150deg,#9de99c,#58b884)!important;border-radius:48%!important}
-.hold.reachable{outline:3px solid #ecffb4!important;outline-offset:4px!important;animation:v18glow 1.2s ease-in-out infinite alternate!important}
-.hold.balance-blocked{outline:3px dotted #ffa66b!important;outline-offset:3px!important}
-@keyframes v18glow{to{outline-color:#65d6ae;outline-offset:8px;filter:drop-shadow(0 0 9px #70e1a5)}}
-.bear{width:120px!important;height:144px!important;filter:drop-shadow(2px 9px 5px #3e2c2070)!important;z-index:12!important}
-.bear svg{filter:drop-shadow(0 2px 1px #f6ca965a)!important}
-#limbLayer{z-index:11!important}
-#limbLayer .limb-border{stroke:#8c5c3d!important}#limbLayer .limb-fill{stroke:#c39162!important}
-.pad{bottom:56px!important;height:83px!important;left:-2%;right:-2%;border:5px solid #ead1b0!important;border-radius:19px!important;background:repeating-linear-gradient(90deg,#a2bfd6 0 30%,#d98e89 30% 64%,#97b69e 64% 85%,#f3c574 85%)!important;box-shadow:inset 0 10px 12px #ffffff55,0 -4px 8px #523b3477!important}
-.legend-v15{display:none!important}.route-callout{display:none!important}
-.footer{z-index:20!important;bottom:calc(env(safe-area-inset-bottom,0px) + 14px)!important;gap:6px!important;left:8px!important;right:8px!important}
-.footer button{height:53px!important;border:2px solid #fff4dc!important;border-radius:18px!important;background:linear-gradient(#fff2dd,#f5cf9e)!important;box-shadow:0 5px 0 #986d4d,0 8px 9px #503d2d55!important;color:#744b33!important;font-size:12px!important}
-.footer .hint{background:linear-gradient(#a8d4b2,#6bab8c)!important;color:#fff!important;text-shadow:0 1px #38694d!important}
-.footer .reset{width:46px!important;font-size:23px!important}.footer .undo{width:47px!important;flex:none!important;font-size:23px!important}.footer .settings{width:37px!important;font-size:17px!important}
-.footer .level{flex:1.2!important}
-@media(max-width:365px){.hud .pill{padding:8px 5px!important}.hud .pill .big{font-size:17px!important}.hud .pill:nth-child(2) .big{font-size:24px!important}.footer button{font-size:11px!important}.grip{font-size:10px!important}.play{left:13%!important;right:13%!important}}
-@media(max-height:710px){.wall{top:115px!important}.play{top:166px!important;bottom:115px!important}.title-flag{top:140px!important}.vine{top:120px!important}.hud .pill{min-height:75px!important;padding:6px!important}.grip{top:98px!important}.toast{top:115px!important}}
-
-
-/* Character art proof: new rendered bear poses, individual image holds, no SVG bear */
-.bear{width:130px;height:162px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 9px 5px #563b3066)}
-.bear .art-bear{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 2px #40291855);transition:transform .2s}
-.bear.climbing .art-bear{transform:rotate(-8deg) scale(1.06)}
-.bear.hanging .art-bear,.bear.scared .art-bear{transform:rotate(14deg)}
-.bear.celebrate .art-bear{transform:translateY(-9px) rotate(-10deg)}
-.bear.contact .art-bear{opacity:1!important}
-.hold{background-color:transparent!important;background-image:var(--hold-art)!important;background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:drop-shadow(0 5px 3px #6a4a3870);width:71px;height:64px}
-.hold.volume{width:94px;height:85px}.hold.crimp{width:65px;height:54px}.hold.sloper{width:78px;height:69px}
-.hold::after{display:none!important}.hold.reachable{outline:3px dashed #70c78e;outline-offset:0;border-radius:20px!important}.hold.balance-blocked{outline:3px dashed #ecb95b;outline-offset:0;border-radius:20px!important}
-.room{background-image:url('assets/scenery/reference-gym.webp');background-position:center;background-size:cover;opacity:.8}.wall{background:linear-gradient(115deg,#fff4e6ee,#e9d9c9f5)!important}
-@media(max-height:680px){.bear{width:108px;height:132px}.hold{width:57px;height:51px}}
-.limb-layer,#limbLayer{display:none!important}
+/* Screen rebuild: clean scenery, single real climbing wall and independently interactive art */
+.app{background:#e8d9c2 url('assets/scenery/gym.svg') center/100% 100% no-repeat!important}
+.room{display:none!important}
+.window,.wall-logo,.wall-deco,.tip,.route-legend,.legend-v15,.route-callout{display:none!important}
+.wall{inset:clamp(114px,15.5%,140px) 11% 84px!important;border:6px solid #dfbf9d!important;border-radius:28px 28px 16px 16px!important;background:linear-gradient(108deg,#fff6e5 0%,#f7e9d3 44%,#edddc5 100%)!important;box-shadow:inset 11px 0 18px #fff9,inset -12px 0 21px #bda0824d,0 9px 0 #ad835d,0 15px 22px #67482d55!important;opacity:1!important}
+.wall:before{opacity:.36!important;background-image:linear-gradient(85deg,transparent 49.5%,#beac9840 50%,transparent 50.6%),linear-gradient(0deg,transparent 49.5%,#beac9840 50%,transparent 50.6%),radial-gradient(#a88e7533 1.4px,transparent 2.6px)!important;background-size:146px 160px,146px 160px,81px 87px!important}
+.wall:after{height:100%!important;background:radial-gradient(ellipse at 18% 8%,#fff9 0,transparent 58%)!important}
+.vine{top:clamp(114px,15.5%,140px)!important;left:11%!important;right:11%!important;z-index:5!important;border-color:#76a15f!important}
+.vine:after{content:'🌿   🍃   🌿   🍃'!important;letter-spacing:0!important;font-size:17px!important}
+#gymLights{top:16%!important;left:11%!important;right:11%!important;pointer-events:none}
+.play{inset:clamp(174px,21%,195px) 14% 155px!important;z-index:8!important}
+.title-flag{top:clamp(150px,17.7%,167px)!important;font-size:31px!important;z-index:10!important}
+.hud{top:calc(env(safe-area-inset-top,0px) + 10px)!important;left:9px!important;right:9px!important;gap:6px!important;z-index:20!important}
+.hud .pill{padding:9px 8px!important;min-height:81px!important;border-radius:19px!important;border:2px solid #fff!important;background:linear-gradient(#fffdf4,#ffedd9)!important;box-shadow:0 5px 0 #ba9570,0 7px 14px #78533b44!important}
+.hud .pill .small{font-size:11px!important}.hud .pill .big{font-size:clamp(15px,4.5vw,19px)!important;white-space:nowrap}.hud .pill:nth-child(2) .big{font-size:clamp(19px,6vw,25px)!important;color:#c87e26!important}
+.hud .pill .sub{font-size:9px!important}.balance-track{margin-top:9px!important;height:13px!important}.balance-dot{height:21px!important;width:21px!important}
+.grip{top:calc(env(safe-area-inset-top,0px) + 102px)!important;right:12px!important;z-index:20!important;padding:5px 9px!important}
+.toast{top:calc(env(safe-area-inset-top,0px) + 106px)!important;left:12px!important;transform:none!important;width:calc(100% - 155px)!important;max-width:none!important;min-width:0!important;font-size:11px!important;padding:7px 8px!important;z-index:20!important}
+.hold,.hold.jug,.hold.crimp,.hold.sloper,.hold.volume,.hold.goal{background-color:transparent!important;background-image:var(--hold-art)!important;background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;border:0!important;border-radius:0!important;box-shadow:none!important;clip-path:none!important;filter:drop-shadow(0 5px 3px #6a4a3870)!important;font-size:0!important;min-width:0!important;min-height:0!important;width:clamp(48px,15vw,69px)!important;height:clamp(44px,13vw,62px)!important;transform:translate(-50%,-50%)!important;overflow:visible!important}
+.hold.crimp{height:48px!important;width:63px!important}.hold.sloper{width:76px!important;height:66px!important}.hold.volume{width:83px!important;height:78px!important}
+.hold:before,.hold:after{display:none!important}.hold.reachable{outline:3px solid #7ad9a0!important;outline-offset:1px!important;border-radius:45%!important;animation:none!important}.hold.balance-blocked{outline:3px dashed #f5a34d!important;outline-offset:1px!important;border-radius:45%!important}
+.bear{width:clamp(100px,29vw,125px)!important;height:clamp(126px,36vw,155px)!important;z-index:12!important;display:flex!important;align-items:center;justify-content:center;filter:drop-shadow(2px 8px 5px #503a2c68)!important}
+.bear .art-bear{width:100%;height:100%;object-fit:contain;transition:transform .22s;filter:drop-shadow(0 2px 1px #4b322a55)}
+.bear.climbing .art-bear{transform:rotate(-7deg) scale(1.04)}.bear.hanging .art-bear,.bear.scared .art-bear{transform:rotate(12deg)}.bear.celebrate .art-bear{transform:translateY(-8px) rotate(-7deg)}
+#limbLayer{display:none!important}
+.pad{bottom:66px!important;height:76px!important;left:0!important;right:0!important;background:repeating-linear-gradient(90deg,#90b1d8 0 27%,#e7a3a3 27% 55%,#b1cdab 55% 76%,#f0c881 76%)!important;border:3px solid #fff6e6!important;z-index:3!important}
+.footer{bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;left:9px!important;right:9px!important;gap:6px!important;z-index:24!important;display:grid!important;grid-template-columns:48px 48px minmax(0,1fr) minmax(0,1.25fr) 44px!important;align-items:stretch}
+.footer button{min-width:0!important;width:100%!important;height:50px!important;border:2px solid #fff9ec!important;border-radius:16px!important;font-size:clamp(11px,2.9vw,13px)!important;background:linear-gradient(#fff7e8,#f1d4ae)!important;box-shadow:0 4px 0 #9b7658!important;color:#6e4a31!important;padding:0 4px!important}
+.footer .reset,.footer .undo,.footer .settings{width:100%!important;font-size:22px!important}.footer .hint{background:linear-gradient(#a8d9b7,#77af91)!important;color:white!important}.footer .level{flex:initial!important}
+@media(max-width:359px){.footer{grid-template-columns:40px 40px minmax(0,1fr) minmax(0,1.18fr) 39px!important;gap:4px!important}.hud .pill{padding:7px 4px!important}.play{left:11%!important;right:11%!important}}
+@media(max-height:710px){.wall{top:108px!important}.vine{top:108px!important}.play{top:155px!important;bottom:142px!important}.title-flag{top:134px!important}.pad{height:65px!important}}
 </style></head><body><main class="app" id="app"><div class="room"></div><div class="window"><div class="window-hill"></div></div><div class="wall"></div><div class="wall-logo">🐾 꼬물클라임</div><div class="wall-deco wall-deco-left">✦</div><div class="wall-deco wall-deco-right">✦</div><div class="vine"></div><div id="gymLights"></div><div class="title-flag">🚩</div><div class="tip">🐾 도전! 정상까지 올라가자!</div><div class="route-legend"><span>🟡 균형</span><span>⚡ 위험</span><span>❄ 미끄럼</span></div><header class="hud"><div class="pill"><div class="small">⛰ STAGE</div><div class="big" id="stage">STAGE 01</div><div class="sub" id="stageName"></div></div><div class="pill"><div class="small">🐾 이동</div><div class="big" id="moves">0 / 4</div><div class="sub" id="best">목표 이하 3성</div></div><div class="pill"><div class="small minirow"><span>균형</span><span id="balanceText">중립</span></div><div class="balance-track"><div class="balance-dot" id="balanceDot"></div></div><div class="sub" style="margin-top:6px">왼쪽 ◀　▶ 오른쪽</div></div></header><div class="grip">✊ 그립 <span id="grip">♥♥♥</span></div><div class="toast" id="toast">빛나는 홀드를 눌러보세요!</div><section class="play" id="play"><div class="holds" id="holds"></div><svg id="limbLayer" aria-hidden="true"></svg><div class="bear-shadow" id="bearShadow"></div><div class="bear" id="bear"><img class="art-bear" id="artBear" alt="복슬복슬한 클라이밍 곰돌이" src="assets/characters/bear_pose_0.png" /></div></section><div class="route-callout" id="routeCallout">🧗 오늘의 루트를 찾아봐!</div><div class="pad"></div><div class="legend-v15" aria-label="홀드 종류 안내"><span><i style="--c:#f3b44b"></i>저그</span><span><i style="--c:#dd7d7d"></i>크림프</span><span><i style="--c:#78bdda"></i>슬로퍼</span><span><i style="--c:#a3ba9e"></i>볼륨</span></div><footer class="footer"><button class="reset" id="reset" aria-label="다시 하기">↻</button><button class="undo" id="undo" aria-label="한 단계 되돌리기" title="한 단계 되돌리기">↶</button><button class="hint" id="hint">💡 힌트</button><button class="level" id="levels">☰ 스테이지</button><button class="settings" id="settings" aria-label="환경 설정">⚙</button></footer><div class="timing hidden" id="timing"><div class="timing-panel"><div class="timing-title">🔴 크림프 그립!</div><div class="timing-desc">곰돌이가 홀드를 잡는 순간 탭!</div><div class="timing-track"><div class="timing-line" id="timingLine"></div></div><button id="timingTap">✋ 지금 잡기!</button><div class="timing-hint">초록 = PERFECT · 노랑 = GOOD · 빨강 = MISS</div></div></div><div class="scrim hidden" id="scrim"><div class="modal" id="modal"></div></div></main>
 <script>
 'use strict';
