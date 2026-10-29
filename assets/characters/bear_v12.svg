@@ -1,0 +1,28 @@
+<svg viewBox="0 0 110 132" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="꼬물 곰돌이"><defs>
+<radialGradient id="fur" cx="32%" cy="21%" r="88%"><stop offset="0" stop-color="#ffe0aa"/><stop offset=".46" stop-color="#dca56f"/><stop offset=".84" stop-color="#bc7e4f"/><stop offset="1" stop-color="#95603d"/></radialGradient>
+<radialGradient id="muzzle" cx="36%" cy="24%" r="87%"><stop stop-color="#fff8e8"/><stop offset="1" stop-color="#e9c399"/></radialGradient>
+<linearGradient id="overall" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#79c2d0"/><stop offset="1" stop-color="#3b8397"/></linearGradient>
+<radialGradient id="ear" cx="30%" cy="27%"><stop stop-color="#eeb5a0"/><stop offset="1" stop-color="#bf7a68"/></radialGradient>
+<filter id="soft"><feGaussianBlur stdDeviation="1.5"/></filter></defs>
+<!-- Short, broad silhouette keeps bear proportions while external climbing rig drives paws. -->
+<g class="leg-left"><path d="M43 96 Q32 105 37 117" stroke="#b87f53" stroke-width="17" stroke-linecap="round" fill="none"/><ellipse cx="37" cy="118" rx="12" ry="9" fill="url(#fur)"/></g>
+<g class="leg-right"><path d="M67 96 Q78 105 73 117" stroke="#b87f53" stroke-width="17" stroke-linecap="round" fill="none"/><ellipse cx="73" cy="118" rx="12" ry="9" fill="url(#fur)"/></g>
+<ellipse cx="55" cy="91" rx="34" ry="33" fill="url(#fur)"/>
+<ellipse cx="55" cy="96" rx="24" ry="25" fill="#f2c99a" opacity=".86"/>
+<g class="arm-left"><ellipse cx="26" cy="77" rx="14" ry="20" transform="rotate(22 26 77)" fill="url(#fur)"/></g>
+<g class="arm-right"><ellipse cx="84" cy="77" rx="14" ry="20" transform="rotate(-22 84 77)" fill="url(#fur)"/></g>
+<circle cx="23" cy="30" r="15" fill="#af7348"/><circle cx="87" cy="30" r="15" fill="#af7348"/>
+<circle cx="23" cy="30" r="8" fill="url(#ear)"/><circle cx="87" cy="30" r="8" fill="url(#ear)"/>
+<ellipse cx="55" cy="54" rx="41" ry="39" fill="url(#fur)"/>
+<ellipse cx="40" cy="35" rx="18" ry="9" fill="#ffe0b4" opacity=".22" transform="rotate(-25 40 35)"/>
+<ellipse cx="55" cy="66" rx="25" ry="20" fill="url(#muzzle)"/>
+<ellipse cx="24" cy="65" rx="8" ry="5" fill="#f0a79a" opacity=".68"/><ellipse cx="86" cy="65" rx="8" ry="5" fill="#f0a79a" opacity=".68"/>
+<g class="face-default"><ellipse cx="41" cy="51" rx="4.6" ry="5.6" fill="#342b2a"/><ellipse cx="69" cy="51" rx="4.6" ry="5.6" fill="#342b2a"/><circle cx="39.5" cy="49.5" r="1.7" fill="white"/><circle cx="67.5" cy="49.5" r="1.7" fill="white"/><path d="M48 70 Q55 79 62 70" stroke="#8e5649" stroke-width="2.8" stroke-linecap="round" fill="none"/></g>
+<g class="face-worry"><path d="M35 49 Q41 44 47 50 M63 50 Q69 44 75 49" stroke="#47322c" stroke-width="3.6" stroke-linecap="round" fill="none"/><ellipse cx="55" cy="72" rx="5" ry="7" fill="#6a3d35"/></g>
+<g class="face-joy"><path d="M35 51 Q41 44 47 51 M63 51 Q69 44 75 51" stroke="#47322c" stroke-width="3.6" stroke-linecap="round" fill="none"/><path d="M45 70 Q55 88 65 70Z" fill="#733b38"/><ellipse cx="55" cy="80" rx="5" ry="3" fill="#ea9d9c"/></g>
+<path d="M49 63 Q55 59 61 63 Q60 69 55 70 Q50 69 49 63Z" fill="#503a33"/>
+<path d="M29 94 Q55 104 81 94" stroke="#327b8f" stroke-width="10" fill="none" stroke-linecap="round"/>
+<path d="M30 91 Q55 100 80 91" stroke="#9ad0d6" stroke-width="3" opacity=".8" fill="none"/>
+<rect x="43" y="95" width="24" height="18" rx="7" fill="url(#overall)" stroke="#fff1d3" stroke-width="2"/>
+<path d="M48 101 L55 105 L62 101" stroke="#e6faf2" stroke-width="2" fill="none"/><circle cx="55" cy="105" r="3" fill="#ffcf73"/>
+</svg>
