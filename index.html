@@ -1,3 +1,4 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
 <title>영차영차 리치 실험실</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -98,6 +99,14 @@ let PAR=20;const parOf=s=>{s._par??=(solve(s,s.start,[],true)||{moves:20}).moves
 let STARS={};try{STARS=JSON.parse(localStorage.getItem('climbers.reach.v2')||'{}')}catch(e){}
 const HOLD_SIZE={jug:86,crimp:68,sloper:92,pinch:76,chip:50};
 const IMG={};['jug','crimp','sloper','pinch'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
+const WALL=new Image();WALL.src='assets/scenery/wall.webp';let wallPat=null;
+const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SCN[n].src=`assets/scenery/${n}.png`});
+WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
+  // 미러 타일: 2x2로 뒤집어 붙여 반복 경계가 안 보이게
+  c.drawImage(WALL,0,0);c.save();c.translate(t.width,0);c.scale(-1,1);c.drawImage(WALL,0,0);c.restore();
+  c.save();c.translate(0,t.height);c.scale(1,-1);c.drawImage(WALL,0,0);c.restore();
+  c.save();c.translate(t.width,t.height);c.scale(-1,-1);c.drawImage(WALL,0,0);c.restore();
+  wallPat=ctx.createPattern(t,'repeat')}catch(e){wallPat=null}};
 const PX_PER_M=250,mOf=y=>Math.max(0,(S.floor-y-260)/PX_PER_M);
 
 /* ---------- 상태 ---------- */
@@ -105,7 +114,7 @@ let C,stamina,honey,moves,hist,mode,torso,drag=null,ret=[null,null,null,null],sn
 let falls=0,fails=0,taughtFoot=false,camY=0,fallV=0,fallSpin=0,lastBuzz=0,lastTick=0,ampPrev=0,winT=0,parts=[],pops=[];
 let modalTimer=null;
 function reset(){clearTimeout(modalTimer);C=S.start.slice();stamina=S.st||100;honey=[];moves=0;hist=[];mode='play';drag=null;hintMove=null;fails=0;torso={...pose(S,C).torso};camY=clampCam(torso.y-viewH()*.47);parts=[];pops=[];hideModal();hud();say(SI===0&&moves===0?'곰돌이의 손이나 발을 끌어서 홀드에 놓아 봐!':S.tip)}
-function loadStage(i,intro=true){SI=i;S=STAGES[i];resize();PAR=parOf(S);PANELS=makePanels();TILT=Object.fromEntries(S.holds.map((h,k)=>[h.id,(rng(k+3+i*31)()-.5)*.7]));falls=0;$('courseNo').textContent='코스 '+(i+1);$('courseName').textContent=S.name;reset();
+function loadStage(i,intro=true){SI=i;S=STAGES[i];scnCache=null;resize();PAR=parOf(S);PANELS=makePanels();TILT=Object.fromEntries(S.holds.map((h,k)=>[h.id,(rng(k+3+i*31)()-.5)*.7]));falls=0;$('courseNo').textContent='코스 '+(i+1);$('courseName').textContent=S.name;reset();
   if(intro)modal(`<div class="tag">${S.pattern}</div><h2>${S.name}</h2><p>${S.tip}</p>${S.st?`<p><b>시작 그립 ${S.st}</b></p>`:''}`,[['오르기!',()=>{hideModal();sayBrief(S.tip,3500)}]])}
 function snapshot(){return {C:C.slice(),stamina,honey:honey.slice(),moves}}
 
@@ -273,19 +282,70 @@ function hideModal(){$('modal').hidden=true}
 /* ---------- 그리기 ---------- */
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let PANELS,TILT;const makePanels=()=>{const r=rng(7+SI),cols=['#f6c3b3','#c4dcf1','#f7e0a0','#cfe6c6','#ddd0f1'],out=[];for(let y=-200;y<S.H;y+=260){const n=2+Math.floor(r()*2);for(let k=0;k<n;k++){const x=r()*S.W,w=180+r()*260,h=160+r()*240;out.push({pts:[[x,y],[x+w*(r()>.5?1:-1),y+h*.3],[x+w*.3,y+h]],c:cols[Math.floor(r()*5)]})}}return out};
+// 분위기 요소 배치 (월드 좌표). 플레이 홀드와 안 겹치게 자동 회피.
+// 코스별로 한 번 계산해 캐시. 후보 위치 중 홀드와 안 겹치는 곳만 채택.
+const HSZ_=()=>HOLD_SIZE;
+let scnCache=null,scnKey=null;
+function hitsHold(x0,y0,x1,y1){
+  for(const h of S.holds){const r=HOLD_SIZE[h.type]*0.5;
+    if(x1>h.x-r&&x0<h.x+r&&y1>h.y-r&&y0<h.y+r)return true}
+  return false;
+}
+function scenery(){
+  if(scnCache&&scnKey===SI)return scnCache;
+  const W=S.W,topY=holdOf(S,S.goal).y-140,r=rng(100+SI*7);
+  const AR={window:700/560,banner:1050/420,plant:600/480};
+  const place=(img,w,x,y,ab,flip)=>{const h=w*AR[img],top=ab?y-h:y-h/2;return {img,x,y:top,w,h,flip}};
+  const out=[],used=[];
+  // 창문: 양쪽 가장자리 여러 높이 후보 중 홀드와 안 겹치는 2~3곳
+  const slots=[];for(let yy=topY+280;yy<S.floor-260;yy+=360)slots.push(yy);
+  let side=0;
+  for(const yy of slots){
+    const w=130+r()*30,x=side? W*(0.86+r()*0.06):W*(0.10+r()*0.06),h=w*AR.window,top=yy-h/2;
+    if(!hitsHold(x-w/2-10,top-10,x+w/2+10,top+h+10)){out.push({img:'window',x,y:top,w,h,flip:side});used.push([x-w/2,top,x+w/2,top+h]);side^=1}
+  }
+  // 현수막: 최상단, 홀드 없는 쪽
+  {const w=90,h=w*AR.banner,y=topY+120,x=W*0.90,top=y-h/2;
+    if(!hitsHold(x-w/2,top,x+w/2,top+h))out.push({img:'banner',x,y:top,w,h});}
+  // 화분: 바닥 양쪽 구석 (홀드는 바닥 근처에 거의 없음)
+  [[W*0.08,120,0],[W*0.93,105,1]].forEach(([x,w,flip])=>{const h=w*AR.plant,top=S.floor-40-h;
+    if(!hitsHold(x-w/2,top,x+w/2,top+h))out.push({img:'plant',x,y:top,w,h,flip})});
+  scnCache=out;scnKey=SI;return out;
+}
+function drawScenery(){
+  const y0=camY-400,y1=camY+viewH()+400;
+  // 벽에 붙은 장식 (홀드 뒤, 벽 위). 반투명하게 깔아 홀드가 묻히지 않게.
+  for(const d of scenery()){
+    const img=SCN[d.img];if(!img.complete||!img.naturalWidth)continue;
+    if(d.y>y1||d.y+d.h<y0)continue;
+    ctx.save();ctx.globalAlpha=.92;
+    if(d.flip){ctx.translate(d.x,0);ctx.scale(-1,1);ctx.drawImage(img,-d.w/2,d.y,d.w,d.h)}
+    else ctx.drawImage(img,d.x-d.w/2,d.y,d.w,d.h);
+    ctx.restore();
+  }
+}
+function drawMat(){ // 바닥 안전 매트 (시작 지점 바닥에만)
+  const y1=camY+viewH()+50;if(S.floor>=y1)return;
+  const img=SCN.mat;if(img.complete&&img.naturalWidth){
+    const w=VW+40,h=w*img.height/img.width;ctx.drawImage(img,-OX-20,S.floor-h*0.18,w,h);
+  }else{ctx.fillStyle='#5f8fcc';roundRect(-OX-20,S.floor,VW+40,200,30);ctx.fill()}
+}
 function drawWall(){
   const y0=camY-50,y1=camY+viewH()+50;
   ctx.fillStyle='#efe3cf';ctx.fillRect(-OX,y0,VW,y1-y0);
-  ctx.globalAlpha=.55;PANELS.forEach(p=>{if(p.pts[0][1]>y1||p.pts[2][1]<y0-400)return;ctx.fillStyle=p.c;ctx.beginPath();p.pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.fill()});ctx.globalAlpha=1;
-  ctx.strokeStyle='rgba(120,85,55,.18)';ctx.lineWidth=3;ctx.beginPath();[233,466].forEach(x=>{ctx.moveTo(x,y0);ctx.lineTo(x,y1)});for(let y=Math.floor(y0/400)*400;y<y1;y+=400){ctx.moveTo(-OX,y);ctx.lineTo(S.W+OX,y)}ctx.stroke();
-  ctx.fillStyle='rgba(70,45,25,.2)';for(let y=Math.floor(y0/70)*70+35;y<y1;y+=70)for(let x=35-140;x<S.W+OX;x+=70){ctx.beginPath();ctx.arc(x+(Math.floor(y/70)%2)*0,y,3.2,0,7);ctx.fill()}
+  if(wallPat){ // ChatGPT 1차 벽 텍스처 (미러 타일 반복)
+    ctx.save();ctx.fillStyle=wallPat;ctx.fillRect(-OX,y0,VW,y1-y0);ctx.restore();
+  }else{ // 폴백: 기존 절차적 벽 (텍스처 로드 실패 시)
+    ctx.globalAlpha=.55;PANELS.forEach(p=>{if(p.pts[0][1]>y1||p.pts[2][1]<y0-400)return;ctx.fillStyle=p.c;ctx.beginPath();p.pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.fill()});ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(120,85,55,.18)';ctx.lineWidth=3;ctx.beginPath();[233,466].forEach(x=>{ctx.moveTo(x,y0);ctx.lineTo(x,y1)});for(let y=Math.floor(y0/400)*400;y<y1;y+=400){ctx.moveTo(-OX,y);ctx.lineTo(S.W+OX,y)}ctx.stroke();
+    ctx.fillStyle='rgba(70,45,25,.2)';for(let y=Math.floor(y0/70)*70+35;y<y1;y+=70)for(let x=35-140;x<S.W+OX;x+=70){ctx.beginPath();ctx.arc(x,y,3.2,0,7);ctx.fill()}
+  }
   // 높이 눈금 (실제 암장처럼 m 표기)
   ctx.fillStyle='rgba(79,47,28,.55)';ctx.font='700 22px Jua, sans-serif';ctx.textAlign='left';
   for(let m=1;m<10;m++){const y=S.floor-260-m*PX_PER_M;if(y<y0||y>y1)continue;ctx.fillRect(-OX,y-2,26,4);ctx.fillText(m+'m',-OX+30,y+8)}
   // 정상 립
   const top=holdOf(S,S.goal).y-140;if(top>y0-100){ctx.fillStyle='#8a5a3a';ctx.fillRect(-OX,top-40,VW,40);ctx.fillStyle='#a8724c';ctx.fillRect(-OX,top-60,VW,22);ctx.fillStyle='#fff8ea';ctx.font='26px Jua, sans-serif';ctx.textAlign='center';ctx.fillText('— 정상 TOP —',S.W/2,top-12);ctx.fillStyle='#6e452e';ctx.fillRect(-OX,-500,VW,top-60+500)}
-  // 매트
-  if(S.floor<y1){ctx.fillStyle='#5f8fcc';roundRect(-OX-20,S.floor,VW+40,200,30);ctx.fill();ctx.fillStyle='#7aa6dd';roundRect(-OX-20,S.floor,VW+40,26,14);ctx.fill();ctx.strokeStyle='#4b78b3';ctx.lineWidth=4;ctx.beginPath();[175,350,525].forEach(x=>{ctx.moveTo(x,S.floor+30);ctx.lineTo(x,S.floor+200)});ctx.stroke()}
+  drawMat();
 }
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function drawHolds(t){
@@ -381,7 +441,7 @@ let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;step(dt);
   const t=now/1000;ctx.setTransform(dpr*scale,0,0,dpr*scale,OX*dpr*scale,-camY*dpr*scale);
-  drawWall();drawHolds(t);drawDrag(t);drawBear(t);drawHint(t);drawFootNudge(t);drawFx();
+  drawWall();drawScenery();drawHolds(t);drawDrag(t);drawBear(t);drawHint(t);drawFootNudge(t);drawFx();
   requestAnimationFrame(frame);
 }
 window.addEventListener('resize',resize);
