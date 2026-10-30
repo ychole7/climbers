@@ -1,0 +1,300 @@
+<title>코스 설계 검증기</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+/* 레이아웃: 왼쪽 큰 벽(편집 캔버스) + 오른쪽/아래 분석 패널. 암장 합판 세계, 설계 도구라 종이+격자 느낌을 섞음 */
+:root{
+  --wood:#5c3a26;--ply:#efe3cf;--panel:#fbf4e6;--ink:#432b1b;--muted:#8a7257;--line:#d8c3a4;
+  --crit:#d8604f;--honey-c:#e0962b;--bypass:#9aa7b5;--go:#4fa876;--warn:#e7a638;
+  --display:'Jua','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  --body:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --wood:#2a1b11;--ply:#3a2c1e;--panel:#2f2415;--ink:#f0e2cc;--muted:#b49a78;--line:#5a4631;color-scheme:dark;}}
+:root[data-theme="dark"]{--wood:#2a1b11;--ply:#3a2c1e;--panel:#2f2415;--ink:#f0e2cc;--muted:#b49a78;--line:#5a4631;color-scheme:dark;}
+html,body{height:100%;margin:0}
+body{background:var(--wood);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+button,select{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,select:focus-visible{outline:3px solid var(--go);outline-offset:2px}
+.wrap{display:flex;height:100%;max-width:1100px;margin:0 auto}
+.stage{position:relative;flex:1;min-width:0;background:var(--ply);overflow:hidden;touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.topbar{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px max(10px,env(safe-area-inset-left,0px));pointer-events:none}
+.topbar>*{pointer-events:auto}
+select,.tb{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:7px 11px;font-family:var(--display);font-size:15px;box-shadow:0 2px 0 rgba(0,0,0,.12)}
+.tb{font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.tb.on{background:var(--go);color:#fff;border-color:var(--go)}
+.tb:active{transform:translateY(1px)}
+.statusline{position:absolute;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:5;pointer-events:none;
+  background:#43291be6;color:#fff2dc;border-radius:12px;padding:7px 12px;font-size:13px;font-weight:700;text-align:center;line-height:1.4}
+/* 분석 패널 */
+.panel{width:300px;flex:none;background:var(--panel);border-left:3px solid var(--line);display:flex;flex-direction:column;
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) 12px;overflow:auto;gap:10px}
+.panel h1{font-family:var(--display);font-weight:400;font-size:19px;margin:0}
+.panel h1 small{display:block;font-family:var(--body);font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+.verdict{border-radius:14px;padding:10px 12px;font-weight:800;font-size:14px;line-height:1.5;border:2px solid}
+.verdict.good{background:#e6f4ec;border-color:#9ed4b5;color:#216b43}
+.verdict.warn{background:#fdf1dc;border-color:#f0ce8a;color:#9a6a18}
+.verdict.bad{background:#fbe6e2;border-color:#ecab9f;color:#9e3d2d}
+:root[data-theme="dark"] .verdict,:root:not([data-theme="light"]) .verdict{background:#ffffff14}
+.stat{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:13px;background:#ffffff40;border-radius:12px;padding:9px 12px}
+.stat b{font-family:var(--display);font-weight:400;font-size:17px;text-align:right;font-variant-numeric:tabular-nums}
+.stat .k{color:var(--muted);align-self:center}
+.legend{font-size:12px;color:var(--muted);line-height:1.8}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+.pathbox{font-size:11px;line-height:1.7;background:#ffffff40;border-radius:12px;padding:8px 10px;max-height:120px;overflow:auto;font-variant-numeric:tabular-nums}
+.pathbox b{font-family:var(--display);font-weight:400}
+.actions{display:flex;flex-direction:column;gap:7px;margin-top:auto}
+.actions button{border:0;border-radius:12px;padding:11px;font-family:var(--display);font-size:15px;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.actions .play{background:var(--go);color:#fff;box-shadow:0 3px 0 #2f8f5a}
+.actions .copy{background:#e9d3ac;color:var(--ink)}
+.actions .reset{background:transparent;box-shadow:none;color:var(--muted);font-size:13px;padding:4px}
+.busy{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:6;background:#43291bdd;color:#ffe9c0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.busy[hidden]{display:none}
+/* 플레이 모드 iframe */
+.playwrap{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column}
+.playwrap[hidden]{display:none}
+.playwrap .bar{display:flex;gap:8px;padding:calc(6px + env(safe-area-inset-top,0px)) 10px 6px;background:var(--wood)}
+.playwrap .bar button{margin-left:auto;background:var(--panel);border:0;border-radius:10px;padding:8px 16px;font-family:var(--display);box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.playwrap .bar span{align-self:center;color:#fff2dc;font-family:var(--display);font-size:15px}
+.playwrap iframe{flex:1;border:0;width:100%}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:60;background:#43291bf0;color:#fff2dc;padding:10px 18px;border-radius:14px;font-weight:700;font-size:13px;transition:opacity .3s;max-width:80%;text-align:center}
+.toast[hidden]{opacity:0;pointer-events:none}
+@media (max-width:760px){
+  .wrap{flex-direction:column}
+  .panel{width:auto;border-left:0;border-top:3px solid var(--line);max-height:44%;flex-direction:row;flex-wrap:wrap;align-items:flex-start}
+  .panel h1{width:100%}.verdict{flex:1 1 100%}.stat{flex:1 1 140px}.legend{flex:1 1 100%}
+  .pathbox{flex:1 1 100%;max-height:70px}.actions{flex-direction:row;width:100%;margin-top:4px}
+  .actions button{flex:1}.actions .reset{flex:0 0 auto}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="topbar">
+      <select id="pick" aria-label="코스 선택"></select>
+      <button class="tb" id="addMode" type="button">＋ 홀드</button>
+      <button class="tb" id="typeMode" type="button">종류 바꾸기</button>
+      <button class="tb" id="del" type="button">🗑 삭제</button>
+    </div>
+    <div class="busy" id="busy" hidden>분석 중…</div>
+    <div class="statusline" id="status">홀드를 끌어 옮겨 보세요. 옮길 때마다 아래 분석이 바뀝니다.</div>
+  </div>
+  <div class="panel">
+    <h1 id="pName">코스<small id="pPattern"></small></h1>
+    <div class="verdict" id="verdict">—</div>
+    <div class="stat">
+      <span class="k">정상까지 최소</span><b id="sGoal">–</b>
+      <span class="k">꿀 포함 최소</span><b id="sHoney">–</b>
+      <span class="k">끝까지 뻗는 수</span><b id="sStrain">–</b>
+      <span class="k">홀드 / 발판</span><b id="sCount">–</b>
+    </div>
+    <div class="legend">
+      <div><i style="background:var(--crit)"></i>필수 — 없으면 정상 불가</div>
+      <div><i style="background:var(--honey-c)"></i>꿀 경로 필수</div>
+      <div><i style="background:var(--bypass)"></i>우회 가능 — 없어도 오름</div>
+    </div>
+    <div class="pathbox" id="path"></div>
+    <div class="actions">
+      <button class="play" id="play" type="button">▶ 이 코스 플레이</button>
+      <button class="copy" id="copy" type="button">📋 좌표 복사 (지피티에게)</button>
+      <button class="reset" id="reset" type="button">이 코스 원래대로</button>
+    </div>
+  </div>
+</div>
+
+<div class="playwrap" id="playwrap" hidden>
+  <div class="bar"><span id="playTitle"></span><button id="closePlay" type="button">✕ 설계로 돌아가기</button></div>
+  <iframe id="playframe" title="플레이 테스트"></iframe>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="reach-core.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+const TYPES=['jug','crimp','sloper','pinch','chip'];
+const TYPE_KO={jug:'저그',crimp:'크림프',sloper:'슬로퍼',pinch:'핀치',chip:'발판'};
+const IMG={};TYPES.forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t==='chip'?'footchip':t}.png`});
+const HSZ={jug:86,crimp:68,sloper:92,pinch:76,chip:50};
+const PX_PER_M=250;
+
+// 작업용 복제본 (원본 STAGES는 건드리지 않음)
+let work=STAGES.map(s=>JSON.parse(JSON.stringify(s)));
+let idx=0,S=work[0];
+let mode='move',drag=null,sel=null,analysis=null,seq=0;
+
+/* ---- 분석 워커 ---- */
+const coreSrc=document.querySelector('script[src="reach-core.js"]')?null:null;
+let worker=null;
+function makeWorker(){
+  // reach-core.js 전체를 워커로 넘겨 재사용
+  fetch('reach-core.js').then(r=>r.text()).then(src=>{
+    const body=src.replace(/if\(typeof module[^\n]*\n?/,'')+`
+      self.onmessage=e=>{const{seq,s}=e.data;const without=(st,id)=>({...st,holds:st.holds.filter(h=>h.id!==id)});
+        const g=solve(s,s.start,[],false),h=solve(s,s.start,[],true);
+        const crit=[],critH=[];
+        s.holds.forEach(x=>{if(s.start.includes(x.id)||x.id===s.goal)return;const w=without(s,x.id);
+          if(!solve(w,w.start,[],false))crit.push(x.id);
+          if(!x.honey&&!solve(w,w.start,[],true))critH.push(x.id)});
+        let strain=[],c=s.start.slice();if(g)g.path.forEach(m=>{const p=canPlace(s,c,m.limb,m.id);if(p.ok){c=p.next;strain.push(+p.pose.strain.toFixed(2))}});
+        const names=s.holds.map(x=>x.id);
+        const pathStr=g?g.path.map(m=>BEAR.name[m.limb]+'→'+m.id).join('  '):null;
+        self.postMessage({seq,goal:g&&g.moves,honey:h&&h.moves,crit,critH,strain,pathStr,reachOk:pose(s,s.start).ok});};`;
+    worker=new Worker(URL.createObjectURL(new Blob([body],{type:'text/javascript'})));
+    worker.onmessage=e=>{if(e.data.seq!==seq)return;analysis=e.data;$('busy').hidden=true;renderPanel()};
+    analyze();
+  });
+}
+function analyze(){if(!worker)return;$('busy').hidden=false;const mySeq=++seq;worker.postMessage({seq:mySeq,s:JSON.parse(JSON.stringify(S))})}
+let analyzeTimer=null;
+function scheduleAnalyze(){clearTimeout(analyzeTimer);analysis=null;renderPanel();analyzeTimer=setTimeout(analyze,250)}
+
+/* ---- 좌표 ---- */
+let scale=1,cw=0,ch=0,dpr=1,camY=0,OX=0,VW=860;
+function resize(){const r=$('stage').getBoundingClientRect();dpr=Math.min(2,devicePixelRatio||1);cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;
+  scale=Math.min(cw/720,Math.max(cw/860,ch/(S.H+120)));VW=cw/scale;OX=(VW-S.W)/2;camY=clampCam(camY)}
+const viewH=()=>ch/scale;
+const clampCam=y=>Math.max(-80,Math.min(Math.max(-80,S.H-viewH()+40),y));
+function toWorld(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/scale-OX,y:(e.clientY-r.top)/scale+camY}}
+
+/* ---- 편집 ---- */
+function pickHold(w){let best=null,bd=60;for(const h of S.holds){const d=Math.hypot(h.x-w.x,h.y-w.y);if(d<bd){bd=d;best=h}}return best}
+function newId(){let n=1;while(S.holds.some(h=>h.id==='N'+n))n++;return 'N'+n}
+cv.addEventListener('pointerdown',e=>{
+  const w=toWorld(e);
+  if(mode==='add'){const h={id:newId(),x:Math.round(w.x),y:Math.round(w.y),type:'jug'};S.holds.push(h);sel=h.id;setMode('move');scheduleAnalyze();draw();return}
+  const h=pickHold(w);
+  if(!h){drag={pan:true,id:e.pointerId,y0:e.clientY,c0:camY};return}
+  sel=h.id;
+  if(mode==='del'){if(S.start.includes(h.id)||h.id===S.goal){toast('시작/정상 홀드는 지울 수 없어요');return}S.holds=S.holds.filter(x=>x.id!==h.id);setMode('move');scheduleAnalyze();draw();return}
+  if(mode==='type'){const i=TYPES.indexOf(h.type);h.type=TYPES[(i+1)%TYPES.length];toast(h.id+' → '+TYPE_KO[h.type]);scheduleAnalyze();draw();return}
+  cv.setPointerCapture(e.pointerId);drag={id:e.pointerId,hold:h,dx:h.x-w.x,dy:h.y-w.y};draw();
+});
+cv.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;
+  if(drag.pan){camY=clampCam(drag.c0-(e.clientY-drag.y0)/scale);draw();return}
+  const w=toWorld(e);drag.hold.x=Math.round(Math.max(20,Math.min(S.W-20,w.x+drag.dx)));drag.hold.y=Math.round(Math.max(60,Math.min(S.floor-40,w.y+drag.dy)));draw()});
+cv.addEventListener('pointerup',e=>{if(drag&&!drag.pan)scheduleAnalyze();drag=null});
+cv.addEventListener('pointercancel',()=>{drag=null});
+$('stage').addEventListener('wheel',e=>{e.preventDefault();camY=clampCam(camY+e.deltaY/scale)},{passive:false});
+
+function setMode(m){mode=mode===m?'move':m;$('addMode').classList.toggle('on',mode==='add');$('typeMode').classList.toggle('on',mode==='type');$('del').classList.toggle('on',mode==='del');
+  $('status').textContent=mode==='add'?'벽을 눌러 새 홀드를 놓으세요':mode==='type'?'홀드를 눌러 종류를 바꾸세요 (저그→크림프→슬로퍼→핀치→발판)':mode==='del'?'지울 홀드를 누르세요':'홀드를 끌어 옮겨 보세요. 옮길 때마다 분석이 바뀝니다.'}
+$('addMode').onclick=()=>setMode('add');$('typeMode').onclick=()=>setMode('type');$('del').onclick=()=>setMode('del');
+
+/* ---- 코스 선택 ---- */
+work.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${s.name}`;$('pick').appendChild(o)});
+$('pick').onchange=()=>{idx=+$('pick').value;S=work[idx];sel=null;resize();camY=clampCam(S.floor);draw();loadInfo();scheduleAnalyze()};
+function loadInfo(){$('pName').firstChild.textContent=S.name;$('pPattern').textContent='패턴: '+(S.pattern||'—')+(S.st?` · 시작 그립 ${S.st}`:'')}
+$('reset').onclick=()=>{work[idx]=JSON.parse(JSON.stringify(STAGES[idx]));S=work[idx];sel=null;resize();draw();loadInfo();scheduleAnalyze();toast('원래 좌표로 되돌렸어요')};
+
+/* ---- 패널 ---- */
+function renderPanel(){
+  const a=analysis;
+  if(!a){$('verdict').className='verdict';$('verdict').textContent='분석 중…';['sGoal','sHoney','sStrain'].forEach(k=>$(k).textContent='…');
+    $('sCount').textContent=`${S.holds.filter(h=>h.type!=='chip').length} / ${S.holds.filter(h=>h.type==='chip').length}`;$('path').textContent='';return}
+  const honeyN=honeyIds(S).length;
+  $('sGoal').textContent=a.goal?a.goal+'수':'불가';
+  $('sHoney').textContent=honeyN?(a.honey?a.honey+'수':'불가'):'꿀 없음';
+  $('sStrain').textContent=a.strain?a.strain.filter(v=>v>=.95).length+' / '+a.strain.length:'–';
+  $('sCount').textContent=`${S.holds.filter(h=>h.type!=='chip').length} / ${S.holds.filter(h=>h.type==='chip').length}`;
+  // 판정
+  let v='',cls='good';
+  if(!a.reachOk){v='⚠ 시작 자세가 불안정해요. 시작 홀드 4개가 서로 너무 멀어요.';cls='bad'}
+  else if(!a.goal){v='❌ 정상까지 길이 없어요. 중간에 닿지 않는 구간이 있어요.';cls='bad'}
+  else if(honeyN&&!a.honey){v='⚠ 꿀을 다 모으면서 오르는 길이 없어요.';cls='warn'}
+  else{
+    const critN=a.crit.length,stiff=a.strain.filter(v=>v>=.95).length;
+    const bits=[];
+    if(critN===0)bits.push('필수 홀드가 없어 쉽게 우회할 수 있어요');
+    else bits.push(`필수 홀드 ${critN}개가 길을 고정해요`);
+    if(S.pattern==='끝까지 뻗기'&&stiff<a.strain.length*.6)bits.push('아직 끝까지 뻗는 수가 적어요');
+    if(S.pattern==='갈림길'&&critN===1)bits.push('두 길이 섞여 선택의 긴장이 약해요');
+    cls=(critN===0||(S.pattern&&bits.length>1))?'warn':'good';
+    v=(cls==='good'?'✅ ':'△ ')+bits.join('. ')+'.';
+  }
+  $('verdict').className='verdict '+cls;$('verdict').textContent=v;
+  $('path').innerHTML=a.pathStr?'<b>최단 경로</b><br>'+a.pathStr:'';
+  draw();
+}
+
+/* ---- 그리기 ---- */
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function draw(){
+  const y0=camY-60,y1=camY+viewH()+60;
+  ctx.setTransform(dpr*scale,0,0,dpr*scale,OX*dpr*scale,-camY*dpr*scale);
+  ctx.fillStyle=getCss('--ply');ctx.fillRect(-OX,y0,VW,y1-y0);
+  // 격자 + m 눈금
+  ctx.strokeStyle='rgba(120,85,55,.16)';ctx.lineWidth=2;ctx.beginPath();
+  for(let x=0;x<=S.W;x+=S.W/4){ctx.moveTo(x,y0);ctx.lineTo(x,y1)}
+  for(let y=Math.floor(y0/250)*250;y<y1;y+=250){ctx.moveTo(-OX,y);ctx.lineTo(S.W+OX,y)}ctx.stroke();
+  ctx.fillStyle=getCss('--muted');ctx.font='600 20px Jua, sans-serif';ctx.textAlign='left';
+  for(let m=1;m<12;m++){const y=S.floor-260-m*PX_PER_M;if(y<y0||y>y1)continue;ctx.fillText(m+'m',-OX+6,y+7)}
+  // 정상 띠
+  const top=holdOf(S,S.goal).y-130;if(top>y0-80){ctx.fillStyle='#8a5a3a';ctx.fillRect(-OX,top-34,VW,34);ctx.fillStyle=getCss('--wood');ctx.fillRect(-OX,top-34-600,VW,600);ctx.fillStyle='#fff2dc';ctx.font='22px Jua, sans-serif';ctx.textAlign='center';ctx.fillText('정상 TOP',S.W/2,top-10)}
+  // 바닥
+  if(S.floor<y1){ctx.fillStyle='#5f8fcc';ctx.fillRect(-OX,S.floor,VW,y1-S.floor)}
+  // 손 닿는 범위: 선택된 홀드 기준으로 어느 손/발이 닿나 (설계 감각용) — 시작 자세 기준
+  drawHolds(y0,y1);
+  drawStartBear();
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v)||'#000'}
+function roleOf(id){const a=analysis;if(!a)return null;if(a.crit.includes(id))return'crit';if(a.critH.includes(id))return'honey';
+  if(S.start.includes(id)||id===S.goal)return null;return'bypass'}
+function drawHolds(y0,y1){
+  for(const h of S.holds){
+    if(h.y<y0-100||h.y>y1+100)continue;
+    const sz=HSZ[h.type],role=roleOf(h.id),isSel=h.id===sel;
+    // 역할 링
+    if(role){const col=role==='crit'?getCss('--crit'):role==='honey'?getCss('--honey-c'):getCss('--bypass');
+      ctx.save();ctx.globalAlpha=role==='bypass'?.5:.95;ctx.strokeStyle=col;ctx.lineWidth=role==='bypass'?3:5;ctx.setLineDash(role==='bypass'?[5,6]:[]);
+      ctx.beginPath();ctx.arc(h.x,h.y,sz*.6,0,7);ctx.stroke();ctx.restore()}
+    const img=IMG[h.type];ctx.save();ctx.translate(h.x,h.y);ctx.shadowColor='rgba(60,35,20,.4)';ctx.shadowBlur=7;ctx.shadowOffsetY=5;
+    if(img.complete&&img.naturalWidth)ctx.drawImage(img,-sz/2,-sz/2,sz,sz);else{ctx.fillStyle='#c98';ctx.beginPath();ctx.arc(0,0,sz/3,0,7);ctx.fill()}
+    ctx.restore();
+    // 라벨 + 꿀 + 시작/정상 배지
+    ctx.font='700 12px '+'system-ui';ctx.textAlign='center';ctx.fillStyle=getCss('--ink');
+    ctx.fillText(h.id,h.x,h.y+sz*.5+13);
+    if(h.honey){ctx.font='22px serif';ctx.fillText('🍯',h.x+sz*.42,h.y-sz*.32)}
+    if(h.id===S.goal){ctx.font='22px serif';ctx.fillText('🏁',h.x-sz*.42,h.y-sz*.32)}
+    if(S.start.includes(h.id)){ctx.font='16px serif';ctx.fillText(S.start.indexOf(h.id)<2?'✋':'🦶',h.x,h.y+3)}
+    if(isSel){ctx.save();ctx.strokeStyle=getCss('--go');ctx.lineWidth=3;ctx.setLineDash([4,4]);ctx.strokeRect(h.x-sz*.6,h.y-sz*.6,sz*1.2,sz*1.2);ctx.restore()}
+  }
+}
+function drawStartBear(){ // 시작 자세를 흐리게 표시 (설계 감각)
+  const p=pose(S,S.start);if(!p.ok)return;const T=p.torso;
+  ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#8a5a3a';
+  S.start.forEach((id,i)=>{const h=holdOf(S,id),a=anchor(T,i);ctx.strokeStyle='#8a5a3a';ctx.lineWidth=12;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(h.x,h.y);ctx.stroke()});
+  ctx.beginPath();ctx.ellipse(T.x,T.y,48,58,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(T.x,T.y-92,46,0,7);ctx.fill();ctx.restore();
+}
+
+/* ---- 복사 ---- */
+function exportText(){
+  const line=h=>{const o=[`id:'${h.id}'`,`x:${h.x}`,`y:${h.y}`,`type:'${h.type}'`];if(h.honey)o.push('honey:true');return '{'+o.join(',')+'}'};
+  const body=`{name:'${S.name}',pattern:'${S.pattern||''}',${S.st?`st:${S.st},`:''}W:${S.W},H:${S.H},floor:${S.floor},goal:'${S.goal}',start:${JSON.stringify(S.start)},holds:[\n `+S.holds.map(line).join(',\n ')+`\n]}`;
+  return body;
+}
+$('copy').onclick=async()=>{const t=exportText();try{await navigator.clipboard.writeText(t);toast('좌표를 복사했어요. 지피티에게 붙여넣으세요')}catch(e){
+  const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('좌표를 복사했어요')}catch(_){toast('복사 실패 — 길게 눌러 선택하세요')}ta.remove()}};
+let toastTimer;function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2400)}
+
+/* ---- 플레이 테스트 ---- */
+$('play').onclick=()=>{
+  // 수정된 코스를 reach-lab.html에 넘겨 플레이. postMessage로 주입.
+  $('playTitle').textContent='플레이: '+S.name;
+  const f=$('playframe');$('playwrap').hidden=false;
+  f.src='reach-lab-framed.html#designtest';
+  const send=()=>f.contentWindow.postMessage({climbersStage:JSON.parse(JSON.stringify(S))},'*');
+  f.onload=()=>setTimeout(send,300);
+};
+$('closePlay').onclick=()=>{$('playwrap').hidden=true;$('playframe').src='about:blank'};
+
+window.addEventListener('resize',()=>{resize();draw()});
+resize();camY=clampCam(S.floor);loadInfo();draw();makeWorker();
+</script>

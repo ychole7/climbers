@@ -385,5 +385,11 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 window.addEventListener('resize',resize);
+// 설계 검증기에서 코스 주입받아 단독 플레이
+let injected=null;
+if(location.hash==='#designtest'){
+  window.addEventListener('message',e=>{if(e.data&&e.data.climbersStage){injected=e.data.climbersStage;injected._par=null;STAGES[0]=injected;loadStage(0)}});
+  document.querySelector('.pill.course')&&(document.querySelector('.pill.course').style.pointerEvents='none');
+}
 resize();loadStage(0);requestAnimationFrame(frame);
 </script>
