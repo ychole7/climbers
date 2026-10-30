@@ -1,0 +1,219 @@
+{
+  "canvas": [
+    512,
+    512
+  ],
+  "world_body_center": [
+    256,
+    256
+  ],
+  "shoulder_offsets": {
+    "L": [
+      -42,
+      -40
+    ],
+    "R": [
+      42,
+      -40
+    ]
+  },
+  "hip_offsets": {
+    "L": [
+      -32,
+      48
+    ],
+    "R": [
+      32,
+      48
+    ]
+  },
+  "whole_arm": 230,
+  "whole_leg": 210,
+  "note": "Each segment must be rotated about its top pivot and scaled at 1:1 world pixels. The top and bottom are separated by exact segment length, no sprite-sheet labels. L/R images are separate and identical symmetric assets.",
+  "parts": [
+    {
+      "file": "upperarm_L.png",
+      "kind": "upperarm",
+      "side": "L",
+      "length": 115,
+      "width": 34,
+      "top": [
+        256,
+        198.5
+      ],
+      "bottom": [
+        256,
+        313.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "upperarm_R.png",
+      "kind": "upperarm",
+      "side": "R",
+      "length": 115,
+      "width": 34,
+      "top": [
+        256,
+        198.5
+      ],
+      "bottom": [
+        256,
+        313.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "forearm_L.png",
+      "kind": "forearm",
+      "side": "L",
+      "length": 115,
+      "width": 30,
+      "top": [
+        256,
+        198.5
+      ],
+      "bottom": [
+        256,
+        313.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "forearm_R.png",
+      "kind": "forearm",
+      "side": "R",
+      "length": 115,
+      "width": 30,
+      "top": [
+        256,
+        198.5
+      ],
+      "bottom": [
+        256,
+        313.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "thigh_L.png",
+      "kind": "thigh",
+      "side": "L",
+      "length": 105,
+      "width": 42,
+      "top": [
+        256,
+        203.5
+      ],
+      "bottom": [
+        256,
+        308.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "thigh_R.png",
+      "kind": "thigh",
+      "side": "R",
+      "length": 105,
+      "width": 42,
+      "top": [
+        256,
+        203.5
+      ],
+      "bottom": [
+        256,
+        308.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "shin_L.png",
+      "kind": "shin",
+      "side": "L",
+      "length": 105,
+      "width": 36,
+      "top": [
+        256,
+        203.5
+      ],
+      "bottom": [
+        256,
+        308.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "shin_R.png",
+      "kind": "shin",
+      "side": "R",
+      "length": 105,
+      "width": 36,
+      "top": [
+        256,
+        203.5
+      ],
+      "bottom": [
+        256,
+        308.5
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "draw_order": "segment below paw"
+    },
+    {
+      "file": "paw_hand_L.png",
+      "kind": "paw_hand",
+      "side": "L",
+      "diameter": 44,
+      "center": [
+        256,
+        256
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "attach": "wrist"
+    },
+    {
+      "file": "paw_hand_R.png",
+      "kind": "paw_hand",
+      "side": "R",
+      "diameter": 44,
+      "center": [
+        256,
+        256
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "attach": "wrist"
+    },
+    {
+      "file": "paw_foot_L.png",
+      "kind": "paw_foot",
+      "side": "L",
+      "diameter": 46,
+      "center": [
+        256,
+        256
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "attach": "ankle"
+    },
+    {
+      "file": "paw_foot_R.png",
+      "kind": "paw_foot",
+      "side": "R",
+      "diameter": 46,
+      "center": [
+        256,
+        256
+      ],
+      "coordinate_system": "512x512 pixel, origin top left",
+      "attach": "ankle"
+    }
+  ]
+}
