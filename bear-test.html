@@ -210,8 +210,16 @@ cv.addEventListener('pointerdown',e=>{
   let best=-1,bd=95;for(let i=0;i<4;i++){const p=pawPos(i),d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=i}}
   if(best<0){const near=S.holds.find(h=>Math.hypot(h.x-w.x,h.y-w.y)<60);if(near)sayBrief('홀드를 누르는 게 아니라, <b>곰돌이의 손발</b>을 끌어서 거기에 놓아 줘!');return}
   cv.setPointerCapture(e.pointerId);
-  const reach=new Set(S.holds.filter(h=>canPlace(S,C,best,h.id).ok).map(h=>h.id));
-  drag={limb:best,id:e.pointerId,sx:e.clientX,sy:e.clientY-FINGER_LIFT,finger:{x:w.x,y:w.y-FINGER_LIFT/scale},paw:pawPos(best),reach,cand:null,over:0,t0:performance.now()};
+  // 드래그 중인 손발 기준으로 모든 홀드 분류: ok=잡힘 / taken=다른 손발 사용중 / balance=균형문제 / foot·chip=발/손 전용 / 그 외=안 닿음
+  const reach=new Set(),marks={};
+  for(const h of S.holds){
+    if(C[best]===h.id)continue;
+    const r=canPlace(S,C,best,h.id);
+    if(r.ok){reach.add(h.id);marks[h.id]='ok'}
+    else if(r.why==='taken'||r.why==='match')marks[h.id]='taken';
+    else if(r.why==='sloper'||r.why==='side')marks[h.id]='balance';
+  }
+  drag={limb:best,id:e.pointerId,sx:e.clientX,sy:e.clientY-FINGER_LIFT,finger:{x:w.x,y:w.y-FINGER_LIFT/scale},paw:pawPos(best),reach,marks,cand:null,over:0,t0:performance.now()};
   hintMove=null;SFX.lift();buzz(8);
 });
 cv.addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){drag.sx=e.clientX;drag.sy=e.clientY-FINGER_LIFT}});
@@ -397,11 +405,21 @@ function drawHolds(t){
   for(const h of S.holds){
     if(h.y<camY-120||h.y>camY+viewH()+120)continue;
     const sz=HOLD_SIZE[h.type],reach=drag&&drag.reach.has(h.id),cand=drag&&drag.cand===h.id,hinted=hintMove&&hintMove.id===h.id;
+    const mark=drag&&drag.marks[h.id];
     if(h.id===S.goal){ctx.save();ctx.fillStyle='rgba(255,210,63,.35)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.75+Math.sin(t*3)*4,0,7);ctx.fill();ctx.restore();ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🏁',h.x+44,h.y-34)}
-    if(reach||cand||hinted){ctx.save();ctx.strokeStyle=hinted?'#ffcf33':'#58c48a';ctx.lineWidth=cand?9:5;ctx.shadowColor=hinted?'#ffd23f':'#58c48a';ctx.shadowBlur=cand?24:12;ctx.globalAlpha=cand?1:.55+.35*Math.sin(t*6);ctx.beginPath();ctx.arc(h.x,h.y,sz*(cand?.66:.56),0,7);ctx.stroke();ctx.restore()}
+    // 드래그 중: 발판(chip) 가시성 ↑ — 어두운 받침 원으로 배경과 분리
+    if(drag&&h.type==='chip'){ctx.save();ctx.fillStyle='rgba(60,40,24,.28)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.62,0,7);ctx.fill();ctx.restore()}
+    // 잡을 수 있음(초록) / 힌트(노랑) / 지금 놓으면 잡힘(cand, 굵게)
+    if(reach||cand||hinted){ctx.save();ctx.strokeStyle=hinted?'#ffcf33':'#45c17d';ctx.lineWidth=cand?10:6;ctx.shadowColor=hinted?'#ffd23f':'#45c17d';ctx.shadowBlur=cand?26:14;ctx.globalAlpha=cand?1:.6+.35*Math.sin(t*6);ctx.beginPath();ctx.arc(h.x,h.y,sz*(cand?.68:.58),0,7);ctx.stroke();ctx.restore()}
+    // 다른 손발 사용중(회색 X)
+    else if(mark==='taken'){ctx.save();ctx.strokeStyle='rgba(120,110,100,.9)';ctx.lineWidth=5;ctx.lineCap='round';const r=sz*.4;ctx.beginPath();ctx.moveTo(h.x-r,h.y-r);ctx.lineTo(h.x+r,h.y+r);ctx.moveTo(h.x+r,h.y-r);ctx.lineTo(h.x-r,h.y+r);ctx.stroke();ctx.restore()}
+    // 균형 문제(주황 점선) — 닿긴 하나 자세가 안 맞음
+    else if(mark==='balance'){ctx.save();ctx.strokeStyle='#e7a638';ctx.lineWidth=5;ctx.setLineDash([7,8]);ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(h.x,h.y,sz*.58,0,7);ctx.stroke();ctx.restore()}
     const k=cand?1.14:1,img=IMG[h.type];
     const an=HOLD_ANCHOR[h.type]||[0,0],ax=-an[0]*sz*k,ay=-an[1]*sz*k;
     ctx.save();ctx.translate(h.x,h.y);ctx.rotate(TILT[h.id]);ctx.shadowColor='rgba(60,35,20,.45)';ctx.shadowBlur=8;ctx.shadowOffsetY=6;
+    // 드래그 중 안 닿는 홀드는 살짝 흐리게(닿는 것과 대비)
+    if(drag&&!reach&&!cand&&mark!=='taken'&&mark!=='balance'&&h.id!==C[drag.limb])ctx.globalAlpha=.78;
     if(img.complete&&img.naturalWidth)ctx.drawImage(img,ax-sz*k/2,ay-sz*k/2,sz*k,sz*k);else{ctx.fillStyle='#d98';ctx.beginPath();ctx.arc(0,0,sz/3,0,7);ctx.fill()}
     ctx.restore();
     if(h.honey&&!honey.includes(h.id)){ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🍯',h.x+sz*.42,h.y-sz*.3+Math.sin(t*3+h.x)*4)}
