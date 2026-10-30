@@ -97,8 +97,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 let S=STAGES[0],SI=0,VW=860,OX=80;const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
 let PAR=20;const parOf=s=>{s._par??=(solve(s,s.start,[],true)||{moves:20}).moves+Math.max(3,Math.round(s.holds.length/6));return s._par};
 let STARS={};try{STARS=JSON.parse(localStorage.getItem('climbers.reach.v2')||'{}')}catch(e){}
-const HOLD_SIZE={jug:86,crimp:68,sloper:92,pinch:76,chip:50};
-const IMG={};['jug','crimp','sloper','pinch'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
+const HOLD_SIZE={jug:86,crimp:68,sloper:92,pinch:76,pocket:78,sidepull:82,undercling:84,volume:96,chip:50};
+const IMG={};['jug','crimp','sloper','pinch','pocket','sidepull','undercling','volume'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
 const WALL=new Image();WALL.src='assets/scenery/wall.webp';let wallPat=null;
 const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SCN[n].src=`assets/scenery/${n}.png`});
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
