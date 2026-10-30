@@ -39,7 +39,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .list span{font-size:13px;line-height:1.3}.list span small{display:block;opacity:.7;font-size:11px}
 .list em{font-style:normal;font-size:13px;letter-spacing:1px}
 .tag{display:inline-block;background:#ffe9a6;border-radius:10px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
-.toast{align-self:center;max-width:94%;background:#4f2f1ce6;color:var(--paper);border-radius:14px;padding:8px 14px;font-size:14px;font-weight:700;line-height:1.4;text-align:center;text-wrap:balance;transition:opacity .25s,transform .25s}
+.toast{align-self:center;max-width:94%;background:#3a2112;color:#fff;border:2px solid #ffe9a6;border-radius:14px;padding:9px 16px;font-size:14px;font-weight:800;line-height:1.4;text-align:center;text-wrap:balance;box-shadow:0 4px 12px #2b170c80;transition:opacity .25s,transform .25s}
 .toast.hide{opacity:0;transform:translateY(-6px)}
 .hud.bottom{bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
 .grip{background:var(--paper);border-radius:16px;padding:7px 12px 9px;box-shadow:0 3px 0 #c9a27c,0 6px 14px #4f2f1c33;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
@@ -125,8 +125,6 @@ function pawImg(name,x,y,diam){
   const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
   const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
 }
-// 관절/연결부를 메우는 털 원반
-function furDisc(x,y,r){ctx.save();ctx.fillStyle=FUR;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.restore()}
 // 이미지 팔다리 하나(2세그먼트+손발). T=몸통중심(연결부 겹침용)
 function limbIK(a,p,L,bend,i,T){
   const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
@@ -141,11 +139,11 @@ function limbIK(a,p,L,bend,i,T){
   // #1 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게 (다리에서 특히)
   const toward=T?uv(a,T):{x:0,y:0},tuck=hand?6:14;
   const upStart={x:a.x+toward.x*tuck,y:a.y+toward.y*tuck};
-  // #2 관절: 아래마디를 관절보다 위에서 시작 + 위마디를 관절보다 아래까지 연장 → 둥근 끝이 겹침
-  const d1=uv(upStart,elbow),loStart={x:elbow.x-d1.x*10,y:elbow.y-d1.y*10};
-  segImg(upName,upStart,elbow,segUp,topUp,wUp,16);   // 위마디(관절 16px 지나도록 연장)
-  furDisc(elbow.x,elbow.y,(hand?15:19)*wUp);          // 관절 메움
-  segImg(loName,loStart,p,segLo,topLo,wLo,0);         // 아래마디(관절 위10px서 시작)
+  // #2 관절판 없이 둥근 끝끼리 겹침: 아래마디를 관절보다 위(위마디 쪽 18px)에서 시작해
+  //    아래마디의 둥근 윗끝이 위마디 끝을 덮음. 그리는 순서가 위마디→아래마디라 자연스럽게 가려짐.
+  const d1=uv(upStart,elbow),loStart={x:elbow.x-d1.x*18,y:elbow.y-d1.y*18};
+  segImg(upName,upStart,elbow,segUp,topUp,wUp,10);   // 위마디(관절 조금 지나도록만)
+  segImg(loName,loStart,p,segLo,topLo,wLo,0);         // 아래마디(관절 위 18px서 시작→겹침)
   pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?46:48);
 }
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
@@ -437,7 +435,7 @@ function drawBear(t){
   drawLeg(2,1);drawLeg(3,-1);
   if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
     // 지피티 1차 몸통+표정 이미지. 512캔버스 몸통중심(256,256)=T, scale로 맞춤
-    const BS=0.80,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
+    const BS=0.85,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
     // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
     ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
     drawArm(0,-1);drawArm(1,1);
