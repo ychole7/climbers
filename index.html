@@ -1,4 +1,5 @@
 <title>영차영차 리치 실험실</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
@@ -92,7 +93,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 <script src="reach-core.js"></script>
 <script>
 'use strict';
-let S=STAGES[0],SI=0;const VW=860,OX=(VW-700)/2,$=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+let S=STAGES[0],SI=0,VW=860,OX=80;const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
 let PAR=20;const parOf=s=>{s._par??=(solve(s,s.start,[],true)||{moves:20}).moves+Math.max(3,Math.round(s.holds.length/6));return s._par};
 let STARS={};try{STARS=JSON.parse(localStorage.getItem('climbers.reach.v2')||'{}')}catch(e){}
 const HOLD_SIZE={jug:86,crimp:68,sloper:92,pinch:76,chip:50};
@@ -104,7 +105,7 @@ let C,stamina,honey,moves,hist,mode,torso,drag=null,ret=[null,null,null,null],sn
 let falls=0,fails=0,taughtFoot=false,camY=0,fallV=0,fallSpin=0,lastBuzz=0,lastTick=0,ampPrev=0,winT=0,parts=[],pops=[];
 let modalTimer=null;
 function reset(){clearTimeout(modalTimer);C=S.start.slice();stamina=S.st||100;honey=[];moves=0;hist=[];mode='play';drag=null;hintMove=null;fails=0;torso={...pose(S,C).torso};camY=clampCam(torso.y-viewH()*.47);parts=[];pops=[];hideModal();hud();say(SI===0&&moves===0?'곰돌이의 손이나 발을 끌어서 홀드에 놓아 봐!':S.tip)}
-function loadStage(i,intro=true){SI=i;S=STAGES[i];PAR=parOf(S);PANELS=makePanels();TILT=Object.fromEntries(S.holds.map((h,k)=>[h.id,(rng(k+3+i*31)()-.5)*.7]));falls=0;$('courseNo').textContent='코스 '+(i+1);$('courseName').textContent=S.name;reset();
+function loadStage(i,intro=true){SI=i;S=STAGES[i];resize();PAR=parOf(S);PANELS=makePanels();TILT=Object.fromEntries(S.holds.map((h,k)=>[h.id,(rng(k+3+i*31)()-.5)*.7]));falls=0;$('courseNo').textContent='코스 '+(i+1);$('courseName').textContent=S.name;reset();
   if(intro)modal(`<div class="tag">${S.pattern}</div><h2>${S.name}</h2><p>${S.tip}</p>${S.st?`<p><b>시작 그립 ${S.st}</b></p>`:''}`,[['오르기!',()=>{hideModal();sayBrief(S.tip,3500)}]])}
 function snapshot(){return {C:C.slice(),stamina,honey:honey.slice(),moves}}
 
@@ -126,9 +127,9 @@ const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
 
 /* ---------- 화면 좌표 ---------- */
 let dpr=1,scale=1,cw=0,ch=0;
-function resize(){const r=$('game').getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;scale=cw/VW}
+function resize(){const r=$('game').getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;scale=Math.min(cw/720,Math.max(cw/860,ch/(S.H+120)));VW=cw/scale;OX=(VW-S.W)/2}
 const viewH=()=>ch/scale;
-const clampCam=y=>Math.max(-80,Math.min(S.H-viewH(),y));
+const clampCam=y=>{const hb=(document.querySelector('.hud.bottom').offsetHeight-30)/scale,ht=(document.querySelector('.hud.top').offsetHeight)/scale;const hi=S.H-viewH()+hb;return Math.max(Math.min(-80-ht*.5,hi),Math.min(hi,y))};
 function toWorld(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/scale-OX,y:(e.clientY-r.top)/scale+camY}}
 
 /* ---------- HUD ---------- */
