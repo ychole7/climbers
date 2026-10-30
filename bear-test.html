@@ -106,6 +106,40 @@ const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SC
 const BEARIMG={body:new Image()};BEARIMG.body.src='assets/characters/bear_body.png';
 ['normal','strain','surprise','happy'].forEach(m=>{BEARIMG[m]=new Image();BEARIMG[m].src=`assets/characters/bear_face_${m}.png`});
 const USE_BEAR_ART=true; // 지피티 1차 몸통+표정 시험 적용
+// 직선형 IK 파츠 V1 (세그먼트별 회전 렌더)
+const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEach(k=>{['L','R'].forEach(s=>{const n=k+'_'+s;IKIMG[n]=new Image();IKIMG[n].src=`assets/characters/ik/${n}.png`})});
+const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
+// 세그먼트 길이(월드px) — pivots.json 기준
+const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
+// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. 이미지는 세로로 곧고 top=(256,topY), 길이=segLen.
+function segImg(name,a,b,segLen,topY){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  const ang=Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2; // 이미지 기본 방향=아래(+y)
+  const S=Math.hypot(b.x-a.x,b.y-a.y)/segLen;       // 월드길이/세그먼트길이 (보통 1)
+  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(S,S);
+  ctx.drawImage(img,-256,-topY); // 이미지의 top(256,topY)이 원점(=a)에 오게
+  ctx.restore();return true;
+}
+function pawImg(name,x,y,diam){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
+}
+// 이미지 팔다리 하나(2세그먼트+손발). a=윗피벗, p=손/발끝, bend·i는 기존 limb과 동일
+function limbIK(a,p,L,bend,i){
+  const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
+  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bend,ey=my+(dx/d)*hh*bend; // 팔꿈치/무릎
+  const hand=i<2,side=(i%2===0)?'L':'R';
+  const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
+  const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
+  const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
+  const elbow={x:ex,y:ey};
+  // 연결부 틈 방지: 아래마디 윗끝을 관절보다 살짝 위(위마디 쪽)에서 시작해 겹침. 길이비율은 유지.
+  const uv=(f,t)=>{const dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;return {x:dx/d,y:dy/d}};
+  const d1=uv(a,elbow),loStart={x:elbow.x-d1.x*8,y:elbow.y-d1.y*8};
+  segImg(upName,a,elbow,segUp,topUp);          // 위마디: 어깨→팔꿈치
+  segImg(loName,loStart,p,segLo,topLo);        // 아래마디: 팔꿈치 살짝 위→손목
+  pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?46:48);
+}
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
   // 미러 타일: 2x2로 뒤집어 붙여 반복 경계가 안 보이게
   c.drawImage(WALL,0,0);c.save();c.translate(t.width,0);c.scale(-1,1);c.drawImage(WALL,0,0);c.restore();
@@ -389,14 +423,16 @@ function drawBear(t){
   ctx.save();
   if(mode==='fall'){ctx.translate(T.x,T.y);ctx.rotate(Math.sin(fallSpin)*.5);ctx.translate(-T.x,-T.y)}
   const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':amp>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
-  // 다리 IK (뒤)
-  limb(anchor(T,2),paws[2],BEAR.len[2],1,30,2);limb(anchor(T,3),paws[3],BEAR.len[3],-1,30,3);
+  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i):limb(anchor(T,i),paws[i],BEAR.len[i],bend,30,i);
+  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
+  // 다리 (뒤)
+  drawLeg(2,1);drawLeg(3,-1);
   if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
     // 지피티 1차 몸통+표정 이미지. 512캔버스 몸통중심(256,256)=T, scale로 맞춤
     const BS=0.80,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
     // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
     ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
-    limb(anchor(T,0),paws[0],BEAR.len[0],-1,26,0);limb(anchor(T,1),paws[1],BEAR.len[1],1,26,1);
+    drawArm(0,-1);drawArm(1,1);
     const fm=mood==='happy'?'happy':mood==='scared'||mood==='dizzy'?'surprise':mood==='effort'||mood==='tired'?'strain':'normal';
     const fi=BEARIMG[fm];if(fi&&fi.complete&&fi.naturalWidth){ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(fi,-256*BS,-256*BS,bw,bw);ctx.restore()}
     ctx.restore();return;
