@@ -111,33 +111,41 @@ const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEa
 const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
 // 세그먼트 길이(월드px) — pivots.json 기준
 const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
-// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. 이미지는 세로로 곧고 top=(256,topY), 길이=segLen.
-function segImg(name,a,b,segLen,topY){
+// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. wScale=가로(두께) 배율, extend=아래로 더 그릴 px(겹침)
+function segImg(name,a,b,segLen,topY,wScale,extend){
   const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  wScale=wScale||1;extend=extend||0;
   const ang=Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2; // 이미지 기본 방향=아래(+y)
-  const S=Math.hypot(b.x-a.x,b.y-a.y)/segLen;       // 월드길이/세그먼트길이 (보통 1)
-  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(S,S);
-  ctx.drawImage(img,-256,-topY); // 이미지의 top(256,topY)이 원점(=a)에 오게
+  const S=(Math.hypot(b.x-a.x,b.y-a.y)+extend)/segLen; // 길이방향 배율 (겹침 포함)
+  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(wScale,S);
+  ctx.drawImage(img,-256,-topY); // 이미지 top(256,topY)이 원점(=a)에
   ctx.restore();return true;
 }
 function pawImg(name,x,y,diam){
   const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
   const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
 }
-// 이미지 팔다리 하나(2세그먼트+손발). a=윗피벗, p=손/발끝, bend·i는 기존 limb과 동일
-function limbIK(a,p,L,bend,i){
+// 관절/연결부를 메우는 털 원반
+function furDisc(x,y,r){ctx.save();ctx.fillStyle=FUR;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.restore()}
+// 이미지 팔다리 하나(2세그먼트+손발). T=몸통중심(연결부 겹침용)
+function limbIK(a,p,L,bend,i,T){
   const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
   const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bend,ey=my+(dx/d)*hh*bend; // 팔꿈치/무릎
   const hand=i<2,side=(i%2===0)?'L':'R';
   const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
   const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
   const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
+  const wUp=hand?1.12:1.14,wLo=hand?1.10:1.12; // 파츠 두께 살짝 키움(비율 유지)
   const elbow={x:ex,y:ey};
-  // 연결부 틈 방지: 아래마디 윗끝을 관절보다 살짝 위(위마디 쪽)에서 시작해 겹침. 길이비율은 유지.
   const uv=(f,t)=>{const dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;return {x:dx/d,y:dy/d}};
-  const d1=uv(a,elbow),loStart={x:elbow.x-d1.x*8,y:elbow.y-d1.y*8};
-  segImg(upName,a,elbow,segUp,topUp);          // 위마디: 어깨→팔꿈치
-  segImg(loName,loStart,p,segLo,topLo);        // 아래마디: 팔꿈치 살짝 위→손목
+  // #1 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게 (다리에서 특히)
+  const toward=T?uv(a,T):{x:0,y:0},tuck=hand?6:14;
+  const upStart={x:a.x+toward.x*tuck,y:a.y+toward.y*tuck};
+  // #2 관절: 아래마디를 관절보다 위에서 시작 + 위마디를 관절보다 아래까지 연장 → 둥근 끝이 겹침
+  const d1=uv(upStart,elbow),loStart={x:elbow.x-d1.x*10,y:elbow.y-d1.y*10};
+  segImg(upName,upStart,elbow,segUp,topUp,wUp,16);   // 위마디(관절 16px 지나도록 연장)
+  furDisc(elbow.x,elbow.y,(hand?15:19)*wUp);          // 관절 메움
+  segImg(loName,loStart,p,segLo,topLo,wLo,0);         // 아래마디(관절 위10px서 시작)
   pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?46:48);
 }
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
@@ -423,8 +431,8 @@ function drawBear(t){
   ctx.save();
   if(mode==='fall'){ctx.translate(T.x,T.y);ctx.rotate(Math.sin(fallSpin)*.5);ctx.translate(-T.x,-T.y)}
   const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':amp>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
-  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i):limb(anchor(T,i),paws[i],BEAR.len[i],bend,30,i);
-  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
+  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,30,i);
+  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
   // 다리 (뒤)
   drawLeg(2,1);drawLeg(3,-1);
   if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
