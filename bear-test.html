@@ -111,12 +111,12 @@ const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEa
 const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
 // 세그먼트 길이(월드px) — pivots.json 기준
 const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
-// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. wScale=가로(두께) 배율, extend=아래로 더 그릴 px(겹침)
-function segImg(name,a,b,segLen,topY,wScale,extend){
+// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. wScale=두께배율, extend=겹침px, lenMul=보이는 길이배율(IK길이는 유지)
+function segImg(name,a,b,segLen,topY,wScale,extend,lenMul){
   const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
-  wScale=wScale||1;extend=extend||0;
+  wScale=wScale||1;extend=extend||0;lenMul=lenMul||1;
   const ang=Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2; // 이미지 기본 방향=아래(+y)
-  const S=(Math.hypot(b.x-a.x,b.y-a.y)+extend)/segLen; // 길이방향 배율 (겹침 포함)
+  const S=(Math.hypot(b.x-a.x,b.y-a.y)+extend)/segLen*lenMul; // 보이는 길이만 lenMul만큼 축소
   ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(wScale,S);
   ctx.drawImage(img,-256,-topY); // 이미지 top(256,topY)이 원점(=a)에
   ctx.restore();return true;
@@ -133,18 +133,22 @@ function limbIK(a,p,L,bend,i,T){
   const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
   const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
   const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
-  const wUp=hand?1.12:1.14,wLo=hand?1.10:1.12; // 파츠 두께 살짝 키움(비율 유지)
+  const wUp=hand?1.30:1.34,wLo=hand?1.24:1.28; // 파츠 두께
+  const lenMul=hand?0.88:0.90;                  // 보이는 길이 축소(팔 −12%·다리 −10%) — IK 길이는 유지
   const elbow={x:ex,y:ey};
   const uv=(f,t)=>{const dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;return {x:dx/d,y:dy/d}};
-  // #1 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게 (다리에서 특히)
+  // 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게
   const toward=T?uv(a,T):{x:0,y:0},tuck=hand?6:14;
   const upStart={x:a.x+toward.x*tuck,y:a.y+toward.y*tuck};
-  // #2 관절판 없이 둥근 끝끼리 겹침: 아래마디를 관절보다 위(위마디 쪽 18px)에서 시작해
-  //    아래마디의 둥근 윗끝이 위마디 끝을 덮음. 그리는 순서가 위마디→아래마디라 자연스럽게 가려짐.
-  const d1=uv(upStart,elbow),loStart={x:elbow.x-d1.x*18,y:elbow.y-d1.y*18};
-  segImg(upName,upStart,elbow,segUp,topUp,wUp,10);   // 위마디(관절 조금 지나도록만)
-  segImg(loName,loStart,p,segLo,topLo,wLo,0);         // 아래마디(관절 위 18px서 시작→겹침)
-  pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?46:48);
+  // 아래마디: 손발(p)에서 관절 방향으로 짧게 그리되, 관절을 넉넉히 지나 겹침(틈 방지)
+  const dLo=uv(p,elbow),loLen=Math.hypot(p.x-elbow.x,p.y-elbow.y)*lenMul;
+  const loStart={x:p.x+dLo.x*(loLen+40),y:p.y+dLo.y*(loLen+40)}; // 관절 넘어 40px까지
+  // 위마디: 관절에서 몸통 방향으로 짧게. 아래쪽(관절)은 아래마디가 덮으므로 관절까지 그대로.
+  const dUp=uv(elbow,upStart),upLen=Math.hypot(elbow.x-upStart.x,elbow.y-upStart.y)*lenMul;
+  const upDrawStart={x:elbow.x+dUp.x*upLen,y:elbow.y+dUp.y*upLen};
+  segImg(upName,upDrawStart,elbow,segUp,topUp,wUp,22);   // 위마디(관절 22px 지나 겹침)
+  segImg(loName,loStart,p,segLo,topLo,wLo,0);             // 아래마디(손발까지, 관절 덮음)
+  pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?50:52); // 손발 +8%
 }
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
   // 미러 타일: 2x2로 뒤집어 붙여 반복 경계가 안 보이게
@@ -453,7 +457,7 @@ function drawBear(t){
   drawLeg(2,1);drawLeg(3,-1);
   if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
     // 지피티 1차 몸통+표정 이미지. 512캔버스 몸통중심(256,256)=T, scale로 맞춤
-    const BS=0.85,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
+    const BS=1.14,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
     // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
     ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
     drawArm(0,-1);drawArm(1,1);
