@@ -548,19 +548,19 @@ const B3=(()=>{
   function seg(par,len,r0,r1,c,ol=5){          // +y 방향으로 뻗는 테이퍼 원기둥 (r0=시작, r1=끝)
     const g=new THREE.Group();par.add(g);
     const geo=new THREE.CylinderGeometry(r1,r0,len,24,1);geo.translate(0,len/2,0);g.add(new THREE.Mesh(geo,mat(c)));
-    const hg=new THREE.CylinderGeometry(r1+ol,r0+ol,len,24,1);hg.translate(0,len/2,0);g.add(new THREE.Mesh(hg,hull));
+    const hg=new THREE.CylinderGeometry(r1+ol,r0+ol,len,24,1,true); // 끝면 없음: 관절에 선이 생기지 않게hg.translate(0,len/2,0);g.add(new THREE.Mesh(hg,hull));
     return g;
   }
 
   /* ----- 계층: root → pelvis → (다리 관절, 꼬리, torso → (몸통, 어깨 관절, 머리)) ----- */
   const root=new THREE.Group();scene.add(root);
   const pelvis=new THREE.Group();root.add(pelvis);
-  ball(pelvis,58,FUR,{y:14,z:8,sx:1.08,sy:.82,sz:.98});                // 엉덩이
-  ball(pelvis,17,FUR2,{y:14,z:66,ol:4});                                // 꼬리
+  ball(pelvis,66,FUR,{y:12,z:8,sx:1.16,sy:.84,sz:1.0});                // 엉덩이
+  ball(pelvis,20,FUR2,{y:12,z:76,ol:4});                                // 꼬리
   const torso=new THREE.Group();pelvis.add(torso);
-  const BODY={rx:74,ry:80,rz:64,cy:54};
+  const BODY={rx:94,ry:90,rz:74,cy:58};
   ball(torso,1,FUR,{y:BODY.cy,sx:BODY.rx,sy:BODY.ry,sz:BODY.rz,ol:.06});  // 통통한 몸통(구를 타원체로)
-  ball(torso,1,BELLY,{y:BODY.cy-6,z:-34,sx:56,sy:64,sz:40,ol:0});         // 배(벽 쪽, 옆에서 살짝 보임)
+  ball(torso,1,BELLY,{y:BODY.cy-8,z:-40,sx:70,sy:72,sz:46,ol:0});         // 배(벽 쪽, 옆에서 살짝 보임)
   // 파란 X자 하네스: 등 표면을 따라가는 튜브 2개 + 가운데 버클 + 허리띠
   const surfZ=(x,y)=>BODY.rz*Math.sqrt(Math.max(.02,1-(x/BODY.rx)**2-((y-BODY.cy)/BODY.ry)**2))+3;
   function strap(x0,y0,x1,y1){
@@ -569,12 +569,12 @@ const B3=(()=>{
     torso.add(new THREE.Mesh(new THREE.TubeGeometry(cv_,28,7.5,10,false),mat(HARN)));
     torso.add(new THREE.Mesh(new THREE.TubeGeometry(cv_,28,10.5,10,false),hull));
   }
-  strap(-42,108,40,8);strap(42,108,-40,8);
-  ball(torso,11,'#2b5a96',{y:56,z:surfZ(0,56)+4,ol:2.5,sz:.8});
-  {const g=new THREE.Group();g.position.y=14;g.scale.set(64,64,58);g.rotation.x=0;torso.add(g);
+  strap(-50,118,46,6);strap(50,118,-46,6);
+  ball(torso,12,'#2b5a96',{y:60,z:surfZ(0,60)+4,ol:2.5,sz:.8});
+  {const g=new THREE.Group();g.position.y=14;g.scale.set(86,50,68);g.rotation.x=0;torso.add(g);
    const tm=new THREE.Mesh(new THREE.TorusGeometry(1,.12,10,48),mat(HARN));tm.rotation.x=Math.PI/2;g.add(tm)}
   // 머리
-  const head=new THREE.Group();head.position.set(0,176,0);torso.add(head);
+  const head=new THREE.Group();head.position.set(0,190,0);head.scale.setScalar(1.15);torso.add(head);
   ball(head,60,FUR,{sx:1.06,sy:.95,sz:.98});
   [-1,1].forEach(s=>ball(head,22,FUR,{x:s*46,y:48,z:-4}));
   [-1,1].forEach(s=>ball(head,12,PAD,{x:s*46,y:48,z:-22,ol:0,sz:.5}));        // 귀 안쪽(벽 쪽)
@@ -583,21 +583,29 @@ const B3=(()=>{
   const eyes=[-1,1].map(s=>ball(head,7,LINE,{x:s*23,y:10,z:-54,ol:0}));
   [-1,1].forEach(s=>ball(head,10,'#ff8a78',{x:s*42,y:-8,z:-42,ol:0,sz:.4,sy:.7}));  // 볼터치
   // 팔다리
-  const ARM={r0:31,r1:28,r2:25,rj:29,rp:40,py:.95},LEG={r0:38,r1:33,r2:29,rj:34,rp:42,py:.8,pz:1.25};
+  const ARM={r0:36,r1:31,r2:26,rj:31,rp:46,py:.95,nat:.78},LEG={r0:48,r1:38,r2:27,rj:38,rp:50,py:.8,pz:1.3,nat:.78};
   function mkLimb(joint,Lreach,Z,spec,side,hand){
-    const total=Math.sqrt(Lreach*Lreach+Z*Z)*1.04,a=total/2;           // 2D 도달 거리 ↔ 3D 완전히 뻗은 길이 (깊이 보정)
-    const up=new THREE.Group();joint.add(up);seg(up,a,spec.r0,spec.r1,FUR);
-    const fore=new THREE.Group();fore.position.set(0,a,0);up.add(fore);ball(fore,spec.rj,FUR);seg(fore,a,spec.r1,spec.r2,FUR);
-    const paw=new THREE.Group();paw.position.set(0,a,0);fore.add(paw);ball(paw,spec.rp,FUR2,{sy:spec.py||1,sz:spec.pz||1});
-    // 발가락 3개(손/발 끝, 벽 쪽 +끝 방향)
-    for(let k=-1;k<=1;k++)ball(paw,hand?6:7,PAD,hand?{x:k*spec.rp*.45,y:spec.rp*.78,z:-spec.rp*.35,ol:0}:{x:k*spec.rp*.5,y:spec.rp*.05,z:-spec.rp*.95,ol:0});
+    // a=최대 길이(2D 도달 거리 ↔ 3D 완전히 뻗은 길이, 깊이 보정) / an=평상시 짧은 길이. 도달 거리를 넘기는 구간만 살짝 늘어남
+    const total=Math.sqrt(Lreach*Lreach+Z*Z)*1.04,a=total/2,an=a*spec.nat;
+    const up=new THREE.Group();joint.add(up);const upB=new THREE.Group();up.add(upB);seg(upB,an,spec.r0,spec.r1,FUR);
+    const fore=new THREE.Group();fore.position.set(0,an,0);up.add(fore);ball(fore,spec.rj,FUR);
+    const foB=new THREE.Group();fore.add(foB);seg(foB,an,spec.r1,spec.r2,FUR);
+    const paw=new THREE.Group();paw.position.set(0,an,0);fore.add(paw);
+    const rp=spec.rp;ball(paw,rp,FUR2,{sy:spec.py||1,sz:spec.pz||1});
+    if(hand){ // 곰 손: 발가락 3개 + 바닥 쪽 큰 발바닥 패드
+      for(let k=-1;k<=1;k++)ball(paw,rp*.26,FUR2,{x:k*rp*.52,y:rp*.8-Math.abs(k)*rp*.12,z:-rp*.1,ol:3.5});
+      ball(paw,rp*.62,PAD,{y:-rp*.05,z:-rp*.62,sz:.4,ol:0});
+    }else{ // 곰 발: 앞쪽(벽 쪽) 발가락 3개 + 큰 발바닥
+      for(let k=-1;k<=1;k++)ball(paw,rp*.25,FUR2,{x:k*rp*.55,y:rp*.12-Math.abs(k)*rp*.1,z:-rp*1.05,ol:3.5});
+      ball(paw,rp*.66,PAD,{y:-rp*.05,z:-rp*.82,sx:.95,sy:.9,sz:.4,ol:0});
+    }
     const pole=hand?V3(side*.8,-.55,1):V3(side*1,.15,1);                // 팔꿈치/무릎이 꺾이는 방향(바깥·시청자 쪽)
-    return {up,fore,paw,a,total,pole,joint};
+    return {up,fore,paw,upB,foB,a,an,total,pole,joint};
   }
   const jt=(x,y)=>{const g=new THREE.Group();g.position.set(x,y,0);return g};
   const shL=jt(-46,90),shR=jt(46,90),hpL=jt(-34,2),hpR=jt(34,2);
   torso.add(shL,shR);pelvis.add(hpL,hpR);
-  ball(shL,36,FUR);ball(shR,36,FUR);ball(hpL,40,FUR);ball(hpR,40,FUR);
+  ball(shL,40,FUR);ball(shR,40,FUR);ball(hpL,52,FUR);ball(hpR,52,FUR);
   const limbs=[mkLimb(shL,BEAR.len[0],ZB,ARM,-1,true),mkLimb(shR,BEAR.len[1],ZB,ARM,1,true),
                mkLimb(hpL,BEAR.len[2],ZB,LEG,-1,false),mkLimb(hpR,BEAR.len[3],ZB,LEG,1,false)];
   // 벽 그림자(블롭)
@@ -651,7 +659,8 @@ const B3=(()=>{
     root.updateMatrixWorld(true);
     // 팔다리 IK: 손발 목표는 2D 좌표 그대로(깊이 보정으로 화면 위치 정확히 일치)
     limbs.forEach((L,i)=>{
-      const S=L.joint.getWorldPosition(V3(0,0,0)),H=sc(paws[i].x,paws[i].y,mode==='play'?ZP:60),E=ik(S,H,L.total,L.pole);
+      const S=L.joint.getWorldPosition(V3(0,0,0)),H=sc(paws[i].x,paws[i].y,mode==='play'?ZP:60),d=S.distanceTo(H),e=Math.min(L.a,Math.max(L.an,d*.53)),E=ik(S,H,2*e,L.pole),sy=e/L.an,sxz=1/Math.sqrt(sy);
+      L.upB.scale.set(sxz,sy,sxz);L.foB.scale.set(sxz,sy,sxz);L.fore.position.y=e;L.paw.position.y=e;
       hv[i].copy(H);ev[i].copy(E);
       aim(L.up,S,E);L.up.updateMatrixWorld(true);aim(L.fore,E,H);L.fore.updateMatrixWorld(true);
     });
