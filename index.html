@@ -66,6 +66,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .card .act{display:flex;gap:8px;justify-content:center;margin-top:14px}
 .card .act button{border:0;border-radius:14px;padding:12px 18px;font-family:var(--display);font-size:18px;background:var(--go);color:#fff;box-shadow:0 3px 0 #2f8f5a}
 .card .act button.sec{background:#e3c9a6;color:var(--ink);box-shadow:0 3px 0 #b58457}
+.fxp{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(118px + env(safe-area-inset-top,0px));z-index:6;display:flex;flex-direction:column;gap:5px;pointer-events:auto}
+.fxp[hidden]{display:none}
+.fxp button{border:0;border-radius:11px;padding:5px 9px;font-size:12px;font-weight:800;text-align:left;background:#e8d6bd;color:#8a6a50;box-shadow:0 2px 0 #c9a27c}
+.fxp button.on{background:#d9f2e3;color:#24603f;box-shadow:0 2px 0 #8fcfaa}
+.fxp button.ab{background:#3a2112;color:#ffe9a6;text-align:center}
 @keyframes blink{50%{opacity:.45}}@keyframes pop{from{transform:scale(.7);opacity:0}}@keyframes star{from{transform:scale(0) rotate(-90deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -77,6 +82,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
       <button class="pill grow course" id="course" type="button"><small id="courseNo">코스 1</small> <span id="courseName">숨은 발판</span> <small>▾</small></button>
       <div class="pill">🍯 <span id="honey">0/2</span></div>
       <div class="pill">🐾 <span id="moves">0</span></div>
+      <button class="pill course" id="fxBtn" type="button" style="flex:none">🎬</button>
     </div>
     <div class="toast" id="toast">곰돌이의 손이나 발을 끌어서 홀드에 놓아 봐!</div>
   </div>
@@ -87,6 +93,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
       <button id="hint" class="hint" type="button">💡 힌트</button>
       <button id="restart" type="button">⟳ 처음부터</button>
     </div>
+  </div>
+  <div class="fxp" id="fxp">
+    <button type="button" data-k="link">🔗 몸통·어깨 붙이기</button>
+    <button type="button" data-k="reach">✋ ① 멀리 뻗기</button>
+    <button type="button" data-k="dangle">🦶 ② 발 떼기</button>
+    <button type="button" data-k="hold">💦 ③ 버티기</button>
+    <button type="button" data-k="force">🔒 버티기 고정(테스트)</button>
+    <button type="button" data-k="slow">🐢 느리게 보기</button>
+    <button type="button" data-k="ab" class="ab">A/B 전체 켜기·끄기</button>
   </div>
   <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
 </main>
@@ -251,8 +266,9 @@ cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',e=>
 
 function release(){
   const d=drag,i=d.limb;drag=null;
-  if(d.cand){commit(i,d.cand);return}
-  ret[i]={...d.paw,t:performance.now()};
+  const vis=FX.dangle&&fx.foot&&fx.foot.i===i?{x:fx.foot.x,y:fx.foot.y}:d.paw;fx.foot=null; // ② 처진 발 위치
+  if(d.cand){commit(i,d.cand);if(vis!==d.paw&&mode==='play')ret[i]={...vis,t:performance.now()};return}
+  ret[i]={...vis,t:performance.now()};
   const near=S.holds.filter(h=>h.id!==C[i]).map(h=>({h,d:Math.hypot(h.x-d.finger.x,h.y-d.finger.y)})).sort((a,b)=>a.d-b.d)[0];
   if(!near||near.d>85||(performance.now()-d.t0<160))return;
   const why=canPlace(S,C,i,near.h.id).why;SFX.no();buzz([20,40,20]);
@@ -318,6 +334,7 @@ function step(dt){
   }else if(mode==='down'||mode==='win'){camTo(torso.y-viewH()*(mode==='win'?.45:.55),dt,4)}
   parts=parts.filter(p=>{p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;return p.t<p.life});
   pops=pops.filter(p=>(p.t+=dt)<1);
+  fxStep(dt);
 }
 let shakeT=0;
 function camTo(y,dt,k){camY+=(clampCam(y)-camY)*(1-Math.exp(-dt*k))}
@@ -460,39 +477,88 @@ function limb(a,p,L,bend,w,i){
   ctx.save();ctx.translate(p.x,p.y);ctx.scale(s,s);ctx.fillStyle=LINE;ctx.beginPath();ctx.ellipse(0,0,r+4,(hand?r:r*.8)+4,0,0,7);ctx.fill();ctx.fillStyle=FUR2;ctx.beginPath();ctx.ellipse(0,0,r,hand?r:r*.8,0,0,7);ctx.fill();
   ctx.fillStyle=PAD;ctx.beginPath();ctx.ellipse(0,hand?3:2,r*.5,r*.4,0,0,7);ctx.fill();[-1,0,1].forEach(k=>{ctx.beginPath();ctx.arc(k*r*.45,hand?-r*.45:-r*.35,r*.17,0,7);ctx.fill()});ctx.restore();
 }
+/* ---------- 모션 실험 (보이는 연출만 — 규칙·도달거리·홀드좌표·IK 길이 불변) ---------- */
+const FX={link:true,reach:true,dangle:true,hold:true,force:false,slow:false};
+try{Object.assign(FX,JSON.parse(localStorage.getItem('climbers.fx')||'{}'))}catch(e){}
+const fx={rot:0,sx:0,sy:0,dip:0,lead:[{x:0,y:0},{x:0,y:0}],hold:0,head:0,side:1,foot:null};
+const appr=(c,t,dt,k)=>c+(t-c)*(1-Math.exp(-dt*k));
+const visAmp=()=>FX.force&&mode==='play'?.85:amp;
+function fxStep(dt){
+  const play=mode==='play';
+  // ① 멀리 뻗기: 55% 이상 뻗으면 어깨가 먼저 나가고, 상체가 엉덩이 축으로 기울며 따라감
+  let rot=0,sx=0,sy=0,dip=0;const lead=[[0,0],[0,0]];
+  if(FX.reach&&play&&drag&&isHand(drag.limb)){
+    const i=drag.limb,a=anchor(torso,i),dx=drag.paw.x-a.x,dy=drag.paw.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d;
+    const k=Math.max(0,Math.min(1,(drag.over-.55)/.45)),s=k*k*(3-2*k);
+    rot=ux*.14*s;sx=ux*8*s;sy=uy*5*s;lead[i]=[ux*13*s,uy*13*s];
+  }
+  // ② 발 떼기: 떨어진 발은 손가락을 살짝 늦게 따라오며 아래로 처지고 흔들림(감쇠 스프링). 몸은 팔에 매달려 살짝 내려감
+  if(FX.dangle&&play&&drag&&!isHand(drag.limb)){
+    const tg=drag.paw;let f=fx.foot;
+    if(!f||f.i!==drag.limb)f=fx.foot={i:drag.limb,x:tg.x,y:tg.y,vx:0,vy:-60};
+    const sag=drag.cand?4:24,ax=(tg.x-f.x)*95-f.vx*7,ay=(tg.y+sag-f.y)*95-f.vy*7;
+    f.vx+=ax*dt;f.vy+=ay*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;
+    const ox=f.x-tg.x,oy=f.y-tg.y,o=Math.hypot(ox,oy);if(o>44){f.x=tg.x+ox/o*44;f.y=tg.y+oy/o*44}
+    dip=7;rot+=(drag.limb===2?-1:1)*.035;
+  }else if(!drag)fx.foot=null;
+  fx.rot=appr(fx.rot,rot,dt,10);fx.sx=appr(fx.sx,sx,dt,10);fx.sy=appr(fx.sy,sy,dt,10);fx.dip=appr(fx.dip,dip,dt,8);
+  for(let i=0;i<2;i++){fx.lead[i].x=appr(fx.lead[i].x,lead[i][0],dt,14);fx.lead[i].y=appr(fx.lead[i].y,lead[i][1],dt,14)}
+  // ③ 버티기: 힘든 자세(뻗음 84%↑) 또는 그립 25 미만이면 몸통만 부들부들 + 고개 갸웃
+  const hk=FX.hold&&play?Math.max(visAmp(),stamina<25?(25-stamina)/25*.6:0):0;
+  if(fx.hold<.05&&hk>.05)fx.side=drag?(drag.paw.x>torso.x?-1:1):(Math.random()<.5?-1:1); // 뻗는 반대쪽으로 갸웃
+  fx.hold=appr(fx.hold,hk,dt,hk>fx.hold?7:4);
+  fx.head=appr(fx.head,fx.hold*.2*fx.side,dt,6);
+}
 function drawBear(t){
-  const now=performance.now(),j=amp*7,jx=()=>(Math.random()-.5)*j,shake=now-shakeT<300?(Math.random()-.5)*14:0;
+  const now=performance.now(),va=visAmp(),newHold=FX.hold&&mode==='play';
+  const j=newHold?0:va*7,jx=()=>(Math.random()-.5)*j,shake=now-shakeT<300?(Math.random()-.5)*14:0; // ③ 끔 = 기존 무작위 떨림(손발 포함)
   const T={x:torso.x+jx()+shake,y:torso.y+jx()};
-  let paws=[0,1,2,3].map(i=>{const p=pawPos(i);return (drag&&drag.limb===i)?{x:p.x+jx()*1.4,y:p.y+jx()*1.4}:{x:p.x+jx()*.3,y:p.y+jx()*.3}});
+  // 떨림: 몸통에만, 사인 합성(무작위 아님)으로 짧고 귀엽게
+  const tr=fx.hold,trx=(Math.sin(t*57)*.6+Math.sin(t*38+1)*.4)*2.8*tr,trY=(Math.sin(t*49+2)*.6+Math.sin(t*31)*.4)*1.8*tr,trR=Math.sin(t*44)*.014*tr;
+  let paws=[0,1,2,3].map(i=>{const p=pawPos(i);
+    if(drag&&drag.limb===i){
+      if(FX.dangle&&fx.foot&&fx.foot.i===i&&mode==='play')return {x:fx.foot.x,y:fx.foot.y};
+      return newHold?{x:p.x+trx*1.2,y:p.y+trY*1.2}:{x:p.x+jx()*1.4,y:p.y+jx()*1.4};
+    }
+    return newHold?{x:p.x,y:p.y}:{x:p.x+jx()*.3,y:p.y+jx()*.3}}); // 접촉한 손발은 홀드 위치 그대로
   if(mode==='fall'||mode==='down'){const w=Math.sin(fallSpin*2);paws=[0,1,2,3].map(i=>{const a=anchor(T,i),up=i<2?-1:1,sd=(i%2?1:-1);return mode==='down'?{x:a.x+sd*(i<2?80:60),y:a.y+(i<2?40:120)}:{x:a.x+sd*(90+w*30),y:a.y+up*(120+Math.cos(fallSpin*3+i)*40)}})}
   if(mode==='win'){const k=(now-winT)/1000;const wi=C[0]===S.goal?1:0;const a=anchor(T,wi);paws[wi]={x:a.x+(wi?1:-1)*(120+Math.sin(k*10)*30),y:a.y-150}}
+  // 몸통 프레임: 엉덩이 중심(몸통 중심 아래 48)을 축으로 회전·이동. 몸통 이미지·어깨·엉덩이·머리가 같은 프레임을 씀(🔗)
+  const oldTilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
+  const R=(FX.reach?0:oldTilt)+fx.rot+trR; // ① 끔 = 기존 기울기
+  const P={x:T.x+fx.sx+trx,y:T.y+fx.sy+fx.dip+trY},HIP=48,cR=Math.cos(R),sR=Math.sin(R);
+  const bp=(ox,oy)=>FX.link?{x:P.x+ox*cR-(oy-HIP)*sR,y:P.y+HIP+ox*sR+(oy-HIP)*cR}:{x:P.x+ox,y:P.y+oy};
+  const A=[0,1,2,3].map(i=>{const q=bp(BEAR.off[i][0],BEAR.off[i][1]);
+    if(i<2)return {x:q.x+fx.lead[i].x,y:q.y+fx.lead[i].y};
+    return {x:q.x-fx.sx*.6,y:q.y}}); // 엉덩이는 상체 이동의 반대로 살짝 버팀
+  const BC=mode==='play'?bp(0,0):T,BR=mode==='play'?R:oldTilt;
   // 팔다리 뒤(다리) → 몸통 → 팔 → 머리
   ctx.save();
   if(mode==='fall'){ctx.translate(T.x,T.y);ctx.rotate(Math.sin(fallSpin)*.5);ctx.translate(-T.x,-T.y)}
-  const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':amp>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
-  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,30,i);
-  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
+  const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':va>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
+  const anc=i=>mode==='play'?A[i]:anchor(T,i);
+  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anc(i),paws[i],BEAR.len[i],bend,i,BC):limb(anc(i),paws[i],BEAR.len[i],bend,30,i);
+  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anc(i),paws[i],BEAR.len[i],bend,i,BC):limb(anc(i),paws[i],BEAR.len[i],bend,26,i);
   // 다리 (뒤)
   drawLeg(2,1);drawLeg(3,-1);
   if(USE_BACK34&&BACK.bear_body_back.complete&&BACK.bear_body_back.naturalWidth){
-    // ===== 후면 3/4 시점 (지피티 1차 자산) =====
-    const BS=1.14,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
-    // 몸통(등): 중심 256,256 → T
-    ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BACK.bear_body_back,-256*BS,-256*BS,bw,bw);ctx.restore();
+    // ===== 후면 3/4 시점 (임시 PNG) =====
+    const BS=1.14,bw=512*BS;
+    ctx.save();ctx.translate(BC.x,BC.y);ctx.rotate(BR);ctx.drawImage(BACK.bear_body_back,-256*BS,-256*BS,bw,bw);ctx.restore();
     // 팔 IK (양손 가까우면 레이어 정리)
     if(Math.abs(paws[0].x-paws[1].x)<80 && paws[0].y<paws[1].y){drawArm(0,-1);drawArm(1,1)}
     else if(Math.abs(paws[0].x-paws[1].x)<80){drawArm(1,1);drawArm(0,-1)}
     else{drawArm(0,-1);drawArm(1,1)}
-    // 머리: 상황에 따라 교체. 기울기 방향으로 고개 돌림. renderOffset[0,-101] 사용.
-    const HS=BS, hsz=512*HS;                    // 머리 캔버스도 몸통과 같은 배율(머리는 캔버스 안에서 이미 작게 그려짐)
-    const headY=T.y-101*BS;                      // JSON renderOffset: 머리중심을 몸통중심 위 101px(배율 적용)
-    // 머리 선택: 힘줌→strain, 기본 기울기 방향에 따라 L/R 돌림, 평상시 back
+    // 머리: renderOffset[0,-101]. 🔗이면 몸통 프레임에 붙임 + ③ 갸웃·까딱
+    const HS=BS,hsz=512*HS;
     let head=BACK.bear_head_back;
-    const turning=Math.abs(tilt)>0.04 || mood==='effort'||mood==='tired'||mood==='happy';
+    const turning=Math.abs(BR)>0.04||mood==='effort'||mood==='tired'||mood==='happy';
     if(mood==='effort'||mood==='tired'){head=BACK.bear_head_turn_L_strain}
-    else if(turning){head=(tilt>0?BACK.bear_head_turn_R:BACK.bear_head_turn_L)}
+    else if(turning){head=(BR>0?BACK.bear_head_turn_R:BACK.bear_head_turn_L)}
     if(!head||!head.complete||!head.naturalWidth)head=BACK.bear_head_back;
-    ctx.save();ctx.translate(T.x+tilt*26,headY);ctx.rotate(tilt*0.6);
+    const nod=Math.sin(t*2.3)*.04*tr+Math.sin(t*61)*.01*tr;
+    if(FX.link&&mode==='play'){const N=bp(0,-101*BS);ctx.save();ctx.translate(N.x,N.y);ctx.rotate(R*.6+fx.head+nod)}
+    else{ctx.save();ctx.translate(T.x+oldTilt*26,T.y-101*BS);ctx.rotate(oldTilt*0.6+(mode==='play'?fx.head+nod:0))}
     ctx.drawImage(head,-256*HS,-256*HS,hsz,hsz);ctx.restore();
     ctx.restore(); // drawBear 최상단 save 닫음
     return;
@@ -557,7 +623,7 @@ function drawFx(){
 }
 let last=performance.now();
 function frame(now){
-  const dt=Math.min(.05,(now-last)/1000);last=now;step(dt);
+  const dt=Math.min(.05,(now-last)/1000)*(FX.slow?.35:1);last=now;step(dt);
   const t=now/1000;ctx.setTransform(dpr*scale,0,0,dpr*scale,OX*dpr*scale,-camY*dpr*scale);
   drawWall();drawScenery();drawHolds(t);drawDrag(t);drawBear(t);drawHint(t);drawFootNudge(t);drawFx();
   requestAnimationFrame(frame);
@@ -569,5 +635,15 @@ if(location.hash==='#designtest'){
   window.addEventListener('message',e=>{if(e.data&&e.data.climbersStage){injected=e.data.climbersStage;injected._par=null;STAGES[0]=injected;loadStage(0)}});
   document.querySelector('.pill.course')&&(document.querySelector('.pill.course').style.pointerEvents='none');
 }
+// 연출 비교 패널
+function fxUI(){document.querySelectorAll('#fxp button[data-k]').forEach(b=>{const k=b.dataset.k;if(k!=='ab')b.classList.toggle('on',!!FX[k])});try{localStorage.setItem('climbers.fx',JSON.stringify(FX))}catch(e){}}
+let fxSaved=null;
+$('fxp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;
+  if(k==='ab'){const keys=['link','reach','dangle','hold'],anyOn=keys.some(q=>FX[q]);
+    if(anyOn){fxSaved=Object.fromEntries(keys.map(q=>[q,FX[q]]));keys.forEach(q=>FX[q]=false);sayBrief('B: 기존 움직임',1400)}
+    else{Object.assign(FX,fxSaved||{link:true,reach:true,dangle:true,hold:true});sayBrief('A: 새 연출',1400)}}
+  else FX[k]=!FX[k];fxUI()});
+$('fxBtn').onclick=()=>{$('fxp').hidden=!$('fxp').hidden};
+fxUI();
 resize();loadStage(0);requestAnimationFrame(frame);
 </script>
