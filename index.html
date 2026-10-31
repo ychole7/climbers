@@ -125,11 +125,27 @@ function pawImg(name,x,y,diam){
   const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
   const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
 }
+const bendSign=[0,0,0,0]; // 각 팔다리 관절 꺾임 부호 기억(이력)
 // 이미지 팔다리 하나(2세그먼트+손발). T=몸통중심(연결부 겹침용)
 function limbIK(a,p,L,bend,i,T){
   const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
-  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bend,ey=my+(dx/d)*hh*bend; // 팔꿈치/무릎
-  const hand=i<2,side=(i%2===0)?'L':'R';
+  const hand=i<2,leftLimb=(i%2===0);
+  // 관절 꺾임 방향 선택. 목표: 팔꿈치는 아래로, 무릎은 바깥(좌우로 벌어지게). 급격한 뒤집힘은 이력으로 억제.
+  // 기준: 어깨→손 수직벡터(nx,ny). bs=+1/-1에 따라 팔꿈치가 수직벡터의 어느 쪽으로 가는지 결정.
+  const nx=-dy/d,ny=dx/d;
+  // 선호 방향: 팔=팔꿈치가 아래(+y)로 가는 쪽, 다리=무릎이 바깥(왼다리는 왼쪽 -x, 오른다리는 오른쪽 +x)으로.
+  let prefVec = hand ? {x:0,y:1} : {x:(leftLimb?-1:1),y:0.25};
+  const dotPos = nx*prefVec.x+ny*prefVec.y;      // bs=+1일 때 관절이 선호방향과 이루는 정렬도
+  let want = dotPos>=0 ? 1 : -1;                  // 선호방향에 맞는 bs
+  // 이력(hysteresis): 직전 프레임 부호를 유지하되, 선호도가 충분히 반대(|dotPos|>0.35)일 때만 뒤집음
+  const prev=bendSign[i];
+  let bs;
+  if(prev===0) bs=want;
+  else if(want===prev) bs=prev;
+  else bs = (Math.abs(dotPos)>0.35) ? want : prev; // 애매하면 유지 → 깜빡임 방지
+  bendSign[i]=bs;
+  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bs,ey=my+(dx/d)*hh*bs; // 팔꿈치/무릎
+  const side=(i%2===0)?'L':'R';
   const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
   const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
   const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
@@ -460,7 +476,10 @@ function drawBear(t){
     const BS=1.14,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
     // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
     ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
-    drawArm(0,-1);drawArm(1,1);
+    // 양손이 가까우면 앞뒤 레이어 자연스럽게: 위쪽 손의 팔을 먼저(뒤에) 그림
+    if(Math.abs(paws[0].x-paws[1].x)<80 && paws[0].y<paws[1].y){drawArm(0,-1);drawArm(1,1)}
+    else if(Math.abs(paws[0].x-paws[1].x)<80){drawArm(1,1);drawArm(0,-1)}
+    else{drawArm(0,-1);drawArm(1,1)}
     const fm=mood==='happy'?'happy':mood==='scared'||mood==='dizzy'?'surprise':mood==='effort'||mood==='tired'?'strain':'normal';
     const fi=BEARIMG[fm];if(fi&&fi.complete&&fi.naturalWidth){ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(fi,-256*BS,-256*BS,bw,bw);ctx.restore()}
     ctx.restore();return;
