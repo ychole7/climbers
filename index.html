@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
-<title>영차영차 리치 실험실</title>
+<title>영차영차 등반대</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,7 +39,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .list span{font-size:13px;line-height:1.3}.list span small{display:block;opacity:.7;font-size:11px}
 .list em{font-style:normal;font-size:13px;letter-spacing:1px}
 .tag{display:inline-block;background:#ffe9a6;border-radius:10px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
-.toast{align-self:center;max-width:94%;background:#4f2f1ce6;color:var(--paper);border-radius:14px;padding:8px 14px;font-size:14px;font-weight:700;line-height:1.4;text-align:center;text-wrap:balance;transition:opacity .25s,transform .25s}
+.toast{align-self:center;max-width:94%;background:#3a2112;color:#fff;border:2px solid #ffe9a6;border-radius:14px;padding:9px 16px;font-size:14px;font-weight:800;line-height:1.4;text-align:center;text-wrap:balance;box-shadow:0 4px 12px #2b170c80;transition:opacity .25s,transform .25s}
 .toast.hide{opacity:0;transform:translateY(-6px)}
 .hud.bottom{bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
 .grip{background:var(--paper);border-radius:16px;padding:7px 12px 9px;box-shadow:0 3px 0 #c9a27c,0 6px 14px #4f2f1c33;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
@@ -103,6 +103,53 @@ const HOLD_ANCHOR={jug:[0,.20],crimp:[.16,-.26],sloper:[-.02,-.16],pinch:[0,.03]
 const IMG={};['jug','crimp','sloper','pinch','pocket','sidepull','undercling','volume'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
 const WALL=new Image();WALL.src='assets/scenery/wall.webp';let wallPat=null;
 const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SCN[n].src=`assets/scenery/${n}.png`});
+const BEARIMG={body:new Image()};BEARIMG.body.src='assets/characters/bear_body.png';
+['normal','strain','surprise','happy'].forEach(m=>{BEARIMG[m]=new Image();BEARIMG[m].src=`assets/characters/bear_face_${m}.png`});
+const USE_BEAR_ART=true; // 지피티 1차 몸통+표정 시험 적용
+// 직선형 IK 파츠 V1 (세그먼트별 회전 렌더)
+const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEach(k=>{['L','R'].forEach(s=>{const n=k+'_'+s;IKIMG[n]=new Image();IKIMG[n].src=`assets/characters/ik/${n}.png`})});
+const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
+// 세그먼트 길이(월드px) — pivots.json 기준
+const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
+// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. wScale=두께배율, extend=겹침px, lenMul=보이는 길이배율(IK길이는 유지)
+function segImg(name,a,b,segLen,topY,wScale,extend,lenMul){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  wScale=wScale||1;extend=extend||0;lenMul=lenMul||1;
+  const ang=Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2; // 이미지 기본 방향=아래(+y)
+  const S=(Math.hypot(b.x-a.x,b.y-a.y)+extend)/segLen*lenMul; // 보이는 길이만 lenMul만큼 축소
+  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(wScale,S);
+  ctx.drawImage(img,-256,-topY); // 이미지 top(256,topY)이 원점(=a)에
+  ctx.restore();return true;
+}
+function pawImg(name,x,y,diam){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
+}
+// 이미지 팔다리 하나(2세그먼트+손발). T=몸통중심(연결부 겹침용)
+function limbIK(a,p,L,bend,i,T){
+  const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
+  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bend,ey=my+(dx/d)*hh*bend; // 팔꿈치/무릎
+  const hand=i<2,side=(i%2===0)?'L':'R';
+  const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
+  const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
+  const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
+  const wUp=hand?1.30:1.34,wLo=hand?1.24:1.28; // 파츠 두께
+  const lenMul=hand?0.88:0.90;                  // 보이는 길이 축소(팔 −12%·다리 −10%) — IK 길이는 유지
+  const elbow={x:ex,y:ey};
+  const uv=(f,t)=>{const dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;return {x:dx/d,y:dy/d}};
+  // 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게
+  const toward=T?uv(a,T):{x:0,y:0},tuck=hand?6:14;
+  const upStart={x:a.x+toward.x*tuck,y:a.y+toward.y*tuck};
+  // 아래마디: 손발(p)에서 관절 방향으로 짧게 그리되, 관절을 넉넉히 지나 겹침(틈 방지)
+  const dLo=uv(p,elbow),loLen=Math.hypot(p.x-elbow.x,p.y-elbow.y)*lenMul;
+  const loStart={x:p.x+dLo.x*(loLen+40),y:p.y+dLo.y*(loLen+40)}; // 관절 넘어 40px까지
+  // 위마디: 관절에서 몸통 방향으로 짧게. 아래쪽(관절)은 아래마디가 덮으므로 관절까지 그대로.
+  const dUp=uv(elbow,upStart),upLen=Math.hypot(elbow.x-upStart.x,elbow.y-upStart.y)*lenMul;
+  const upDrawStart={x:elbow.x+dUp.x*upLen,y:elbow.y+dUp.y*upLen};
+  segImg(upName,upDrawStart,elbow,segUp,topUp,wUp,22);   // 위마디(관절 22px 지나 겹침)
+  segImg(loName,loStart,p,segLo,topLo,wLo,0);             // 아래마디(손발까지, 관절 덮음)
+  pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?50:52); // 손발 +8%
+}
 WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
   // 미러 타일: 2x2로 뒤집어 붙여 반복 경계가 안 보이게
   c.drawImage(WALL,0,0);c.save();c.translate(t.width,0);c.scale(-1,1);c.drawImage(WALL,0,0);c.restore();
@@ -167,8 +214,16 @@ cv.addEventListener('pointerdown',e=>{
   let best=-1,bd=95;for(let i=0;i<4;i++){const p=pawPos(i),d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=i}}
   if(best<0){const near=S.holds.find(h=>Math.hypot(h.x-w.x,h.y-w.y)<60);if(near)sayBrief('홀드를 누르는 게 아니라, <b>곰돌이의 손발</b>을 끌어서 거기에 놓아 줘!');return}
   cv.setPointerCapture(e.pointerId);
-  const reach=new Set(S.holds.filter(h=>canPlace(S,C,best,h.id).ok).map(h=>h.id));
-  drag={limb:best,id:e.pointerId,sx:e.clientX,sy:e.clientY-FINGER_LIFT,finger:{x:w.x,y:w.y-FINGER_LIFT/scale},paw:pawPos(best),reach,cand:null,over:0,t0:performance.now()};
+  // 드래그 중인 손발 기준으로 모든 홀드 분류: ok=잡힘 / taken=다른 손발 사용중 / balance=균형문제 / foot·chip=발/손 전용 / 그 외=안 닿음
+  const reach=new Set(),marks={};
+  for(const h of S.holds){
+    if(C[best]===h.id)continue;
+    const r=canPlace(S,C,best,h.id);
+    if(r.ok){reach.add(h.id);marks[h.id]='ok'}
+    else if(r.why==='taken'||r.why==='match')marks[h.id]='taken';
+    else if(r.why==='sloper'||r.why==='side')marks[h.id]='balance';
+  }
+  drag={limb:best,id:e.pointerId,sx:e.clientX,sy:e.clientY-FINGER_LIFT,finger:{x:w.x,y:w.y-FINGER_LIFT/scale},paw:pawPos(best),reach,marks,cand:null,over:0,t0:performance.now()};
   hintMove=null;SFX.lift();buzz(8);
 });
 cv.addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){drag.sx=e.clientX;drag.sy=e.clientY-FINGER_LIFT}});
@@ -354,11 +409,21 @@ function drawHolds(t){
   for(const h of S.holds){
     if(h.y<camY-120||h.y>camY+viewH()+120)continue;
     const sz=HOLD_SIZE[h.type],reach=drag&&drag.reach.has(h.id),cand=drag&&drag.cand===h.id,hinted=hintMove&&hintMove.id===h.id;
+    const mark=drag&&drag.marks[h.id];
     if(h.id===S.goal){ctx.save();ctx.fillStyle='rgba(255,210,63,.35)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.75+Math.sin(t*3)*4,0,7);ctx.fill();ctx.restore();ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🏁',h.x+44,h.y-34)}
-    if(reach||cand||hinted){ctx.save();ctx.strokeStyle=hinted?'#ffcf33':'#58c48a';ctx.lineWidth=cand?9:5;ctx.shadowColor=hinted?'#ffd23f':'#58c48a';ctx.shadowBlur=cand?24:12;ctx.globalAlpha=cand?1:.55+.35*Math.sin(t*6);ctx.beginPath();ctx.arc(h.x,h.y,sz*(cand?.66:.56),0,7);ctx.stroke();ctx.restore()}
+    // 드래그 중: 발판(chip) 가시성 ↑ — 어두운 받침 원으로 배경과 분리
+    if(drag&&h.type==='chip'){ctx.save();ctx.fillStyle='rgba(60,40,24,.28)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.62,0,7);ctx.fill();ctx.restore()}
+    // 잡을 수 있음(초록) / 힌트(노랑) / 지금 놓으면 잡힘(cand, 굵게)
+    if(reach||cand||hinted){ctx.save();ctx.strokeStyle=hinted?'#ffcf33':'#45c17d';ctx.lineWidth=cand?10:6;ctx.shadowColor=hinted?'#ffd23f':'#45c17d';ctx.shadowBlur=cand?26:14;ctx.globalAlpha=cand?1:.6+.35*Math.sin(t*6);ctx.beginPath();ctx.arc(h.x,h.y,sz*(cand?.68:.58),0,7);ctx.stroke();ctx.restore()}
+    // 다른 손발 사용중(회색 X)
+    else if(mark==='taken'){ctx.save();ctx.strokeStyle='rgba(120,110,100,.9)';ctx.lineWidth=5;ctx.lineCap='round';const r=sz*.4;ctx.beginPath();ctx.moveTo(h.x-r,h.y-r);ctx.lineTo(h.x+r,h.y+r);ctx.moveTo(h.x+r,h.y-r);ctx.lineTo(h.x-r,h.y+r);ctx.stroke();ctx.restore()}
+    // 균형 문제(주황 점선) — 닿긴 하나 자세가 안 맞음
+    else if(mark==='balance'){ctx.save();ctx.strokeStyle='#e7a638';ctx.lineWidth=5;ctx.setLineDash([7,8]);ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(h.x,h.y,sz*.58,0,7);ctx.stroke();ctx.restore()}
     const k=cand?1.14:1,img=IMG[h.type];
     const an=HOLD_ANCHOR[h.type]||[0,0],ax=-an[0]*sz*k,ay=-an[1]*sz*k;
     ctx.save();ctx.translate(h.x,h.y);ctx.rotate(TILT[h.id]);ctx.shadowColor='rgba(60,35,20,.45)';ctx.shadowBlur=8;ctx.shadowOffsetY=6;
+    // 드래그 중 안 닿는 홀드는 살짝 흐리게(닿는 것과 대비)
+    if(drag&&!reach&&!cand&&mark!=='taken'&&mark!=='balance'&&h.id!==C[drag.limb])ctx.globalAlpha=.78;
     if(img.complete&&img.naturalWidth)ctx.drawImage(img,ax-sz*k/2,ay-sz*k/2,sz*k,sz*k);else{ctx.fillStyle='#d98';ctx.beginPath();ctx.arc(0,0,sz/3,0,7);ctx.fill()}
     ctx.restore();
     if(h.honey&&!honey.includes(h.id)){ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🍯',h.x+sz*.42,h.y-sz*.3+Math.sin(t*3+h.x)*4)}
@@ -385,7 +450,21 @@ function drawBear(t){
   // 팔다리 뒤(다리) → 몸통 → 팔 → 머리
   ctx.save();
   if(mode==='fall'){ctx.translate(T.x,T.y);ctx.rotate(Math.sin(fallSpin)*.5);ctx.translate(-T.x,-T.y)}
-  limb(anchor(T,2),paws[2],BEAR.len[2],1,30,2);limb(anchor(T,3),paws[3],BEAR.len[3],-1,30,3);
+  const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':amp>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
+  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,30,i);
+  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
+  // 다리 (뒤)
+  drawLeg(2,1);drawLeg(3,-1);
+  if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
+    // 지피티 1차 몸통+표정 이미지. 512캔버스 몸통중심(256,256)=T, scale로 맞춤
+    const BS=1.14,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
+    // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
+    ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
+    drawArm(0,-1);drawArm(1,1);
+    const fm=mood==='happy'?'happy':mood==='scared'||mood==='dizzy'?'surprise':mood==='effort'||mood==='tired'?'strain':'normal';
+    const fi=BEARIMG[fm];if(fi&&fi.complete&&fi.naturalWidth){ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(fi,-256*BS,-256*BS,bw,bw);ctx.restore()}
+    ctx.restore();return;
+  }
   ctx.fillStyle=LINE;ctx.beginPath();ctx.ellipse(T.x,T.y,60,72,0,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.ellipse(T.x,T.y,55,67,0,0,7);ctx.fill();
   ctx.fillStyle=BELLY;ctx.beginPath();ctx.ellipse(T.x,T.y+8,36,46,0,0,7);ctx.fill();
   ctx.fillStyle=HARN;ctx.fillRect(T.x-56,T.y+30,112,16);ctx.fillStyle='#2b5a96';ctx.fillRect(T.x-9,T.y+27,18,22);
@@ -398,7 +477,6 @@ function drawBear(t){
   ctx.fillStyle=LINE;ctx.beginPath();ctx.arc(0,0,58,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.arc(0,0,54,0,7);ctx.fill();
   ctx.fillStyle=BELLY;ctx.beginPath();ctx.ellipse(0,18,27,21,0,0,7);ctx.fill();
   ctx.fillStyle='rgba(255,130,120,'+(.35+amp*.3)+')';[-1,1].forEach(s=>{ctx.beginPath();ctx.ellipse(s*32,14,10,6,0,0,7);ctx.fill()});
-  const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':amp>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
   ctx.strokeStyle=LINE;ctx.fillStyle=LINE;ctx.lineWidth=5;ctx.lineCap='round';
   [-1,1].forEach(s=>{const ex=s*19,ey=-6;ctx.beginPath();
     if(mood==='calm'){ctx.arc(ex,ey,6,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex+2,ey-2,2,0,7);ctx.fill();ctx.fillStyle=LINE}
