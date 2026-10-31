@@ -103,11 +103,14 @@ const HOLD_ANCHOR={jug:[0,.20],crimp:[.16,-.26],sloper:[-.02,-.16],pinch:[0,.03]
 const IMG={};['jug','crimp','sloper','pinch','pocket','sidepull','undercling','volume'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
 const WALL=new Image();WALL.src='assets/scenery/wall.webp';let wallPat=null;
 const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SCN[n].src=`assets/scenery/${n}.png`});
-const BEARIMG={body:new Image()};BEARIMG.body.src='assets/characters/bear_body.png';
-['normal','strain','surprise','happy'].forEach(m=>{BEARIMG[m]=new Image();BEARIMG[m].src=`assets/characters/bear_face_${m}.png`});
-const USE_BEAR_ART=true; // 지피티 1차 몸통+표정 시험 적용
+const USE_BEAR_ART=false; // 구 정면 몸통 미사용(후면 3/4 기본)
+// 후면 3/4 자산 (몸통+머리)
+const BACK={};['bear_body_back','bear_head_back','bear_head_turn_L','bear_head_turn_R'].forEach(n=>{BACK[n]=new Image();BACK[n].src=`assets/characters/ik_back/${n}.png`});
+BACK.bear_head_turn_L_strain=new Image();BACK.bear_head_turn_L_strain.src='assets/characters/ik_back/bear_head_turn_L_strain.png'; // v2 미포함 → 1차 strain 머리 유지
+const USE_BACK34=true; // 후면 3/4 시점 적용
 // 직선형 IK 파츠 V1 (세그먼트별 회전 렌더)
-const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEach(k=>{['L','R'].forEach(s=>{const n=k+'_'+s;IKIMG[n]=new Image();IKIMG[n].src=`assets/characters/ik/${n}.png`})});
+// 후면 3/4: 팔다리도 후면 전용 파츠(ik_back) 사용. 키는 동일(upperarm_L 등)로 매핑.
+const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEach(k=>{['L','R'].forEach(s=>{const n=k+'_'+s;IKIMG[n]=new Image();IKIMG[n].src=`assets/characters/ik_back/${k}_back_${s}.png`})});
 const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
 // 세그먼트 길이(월드px) — pivots.json 기준
 const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
@@ -471,17 +474,32 @@ function drawBear(t){
   const drawArm=(i,bend)=>USE_IK_ART?limbIK(anchor(T,i),paws[i],BEAR.len[i],bend,i,T):limb(anchor(T,i),paws[i],BEAR.len[i],bend,26,i);
   // 다리 (뒤)
   drawLeg(2,1);drawLeg(3,-1);
-  if(USE_BEAR_ART&&BEARIMG.body.complete&&BEARIMG.body.naturalWidth){
-    // 지피티 1차 몸통+표정 이미지. 512캔버스 몸통중심(256,256)=T, scale로 맞춤
+  if(USE_BACK34&&BACK.bear_body_back.complete&&BACK.bear_body_back.naturalWidth){
+    // ===== 후면 3/4 시점 (지피티 1차 자산) =====
     const BS=1.14,bw=512*BS,tilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
-    // 몸통 먼저 → 팔 IK → 표정(얼굴 위). 머리는 이미지에 포함.
-    ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BEARIMG.body,-256*BS,-256*BS,bw,bw);ctx.restore();
-    // 양손이 가까우면 앞뒤 레이어 자연스럽게: 위쪽 손의 팔을 먼저(뒤에) 그림
+    // 몸통(등): 중심 256,256 → T
+    ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(BACK.bear_body_back,-256*BS,-256*BS,bw,bw);ctx.restore();
+    // 팔 IK (양손 가까우면 레이어 정리)
     if(Math.abs(paws[0].x-paws[1].x)<80 && paws[0].y<paws[1].y){drawArm(0,-1);drawArm(1,1)}
     else if(Math.abs(paws[0].x-paws[1].x)<80){drawArm(1,1);drawArm(0,-1)}
     else{drawArm(0,-1);drawArm(1,1)}
-    const fm=mood==='happy'?'happy':mood==='scared'||mood==='dizzy'?'surprise':mood==='effort'||mood==='tired'?'strain':'normal';
-    const fi=BEARIMG[fm];if(fi&&fi.complete&&fi.naturalWidth){ctx.save();ctx.translate(T.x,T.y);ctx.rotate(tilt);ctx.drawImage(fi,-256*BS,-256*BS,bw,bw);ctx.restore()}
+    // 머리: 상황에 따라 교체. 기울기 방향으로 고개 돌림. renderOffset[0,-101] 사용.
+    const HS=BS, hsz=512*HS;                    // 머리 캔버스도 몸통과 같은 배율(머리는 캔버스 안에서 이미 작게 그려짐)
+    const headY=T.y-101*BS;                      // JSON renderOffset: 머리중심을 몸통중심 위 101px(배율 적용)
+    // 머리 선택: 힘줌→strain, 기본 기울기 방향에 따라 L/R 돌림, 평상시 back
+    let head=BACK.bear_head_back;
+    const turning=Math.abs(tilt)>0.04 || mood==='effort'||mood==='tired'||mood==='happy';
+    if(mood==='effort'||mood==='tired'){head=BACK.bear_head_turn_L_strain}
+    else if(turning){head=(tilt>0?BACK.bear_head_turn_R:BACK.bear_head_turn_L)}
+    if(!head||!head.complete||!head.naturalWidth)head=BACK.bear_head_back;
+    ctx.save();ctx.translate(T.x+tilt*26,headY);ctx.rotate(tilt*0.6);
+    ctx.drawImage(head,-256*HS,-256*HS,hsz,hsz);ctx.restore();
+    ctx.restore(); // drawBear 최상단 save 닫음
+    return;
+  }
+  if(false){ // (구 정면 몸통 분기 제거됨 — 후면 3/4가 기본)
+    const BS=1.14,bw=512*BS,tilt=0;
+    drawArm(0,-1);drawArm(1,1);
     ctx.restore();return;
   }
   ctx.fillStyle=LINE;ctx.beginPath();ctx.ellipse(T.x,T.y,60,72,0,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.ellipse(T.x,T.y,55,67,0,0,7);ctx.fill();

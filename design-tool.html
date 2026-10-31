@@ -289,7 +289,7 @@ $('play').onclick=()=>{
   // 수정된 코스를 reach-lab.html에 넘겨 플레이. postMessage로 주입.
   $('playTitle').textContent='플레이: '+S.name;
   const f=$('playframe');$('playwrap').hidden=false;
-  f.src='reach-lab.html#designtest';
+  f.src='index.html#designtest';
   const send=()=>f.contentWindow.postMessage({climbersStage:JSON.parse(JSON.stringify(S))},'*');
   f.onload=()=>setTimeout(send,300);
 };
