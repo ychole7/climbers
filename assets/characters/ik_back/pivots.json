@@ -1,0 +1,325 @@
+{
+  "version": "back34_ik_v2",
+  "canvas": {
+    "width": 512,
+    "height": 512
+  },
+  "bodyCenter": [
+    256,
+    256
+  ],
+  "skeleton": {
+    "shoulder_L": [
+      214,
+      216
+    ],
+    "shoulder_R": [
+      298,
+      216
+    ],
+    "hip_L": [
+      224,
+      304
+    ],
+    "hip_R": [
+      288,
+      304
+    ],
+    "armTotal": 230,
+    "legTotal": 210
+  },
+  "files": {
+    "bear_body_back": {
+      "center": [
+        256,
+        256
+      ],
+      "role": "body_no_head",
+      "shoulder_L": [
+        214,
+        216
+      ],
+      "shoulder_R": [
+        298,
+        216
+      ],
+      "hip_L": [
+        224,
+        304
+      ],
+      "hip_R": [
+        288,
+        304
+      ],
+      "filename": "bear_body_back.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "bear_head_back": {
+      "center": [
+        256,
+        256
+      ],
+      "renderOffset": [
+        0,
+        -101
+      ],
+      "role": "head_back",
+      "filename": "bear_head_back.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "bear_head_turn_L": {
+      "center": [
+        256,
+        256
+      ],
+      "renderOffset": [
+        0,
+        -101
+      ],
+      "role": "head_turn",
+      "looksToward": "L",
+      "filename": "bear_head_turn_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "bear_head_turn_R": {
+      "center": [
+        256,
+        256
+      ],
+      "renderOffset": [
+        0,
+        -101
+      ],
+      "role": "head_turn",
+      "looksToward": "R",
+      "filename": "bear_head_turn_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "upperarm_back_L": {
+      "top": [
+        256,
+        199
+      ],
+      "bottom": [
+        256,
+        314
+      ],
+      "length": 115,
+      "nominalWidth": 34,
+      "role": "upperarm",
+      "side": "L",
+      "filename": "upperarm_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "upperarm_back_R": {
+      "top": [
+        256,
+        199
+      ],
+      "bottom": [
+        256,
+        314
+      ],
+      "length": 115,
+      "nominalWidth": 34,
+      "role": "upperarm",
+      "side": "R",
+      "filename": "upperarm_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "forearm_back_L": {
+      "top": [
+        256,
+        199
+      ],
+      "bottom": [
+        256,
+        314
+      ],
+      "length": 115,
+      "nominalWidth": 30,
+      "role": "forearm",
+      "side": "L",
+      "filename": "forearm_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "forearm_back_R": {
+      "top": [
+        256,
+        199
+      ],
+      "bottom": [
+        256,
+        314
+      ],
+      "length": 115,
+      "nominalWidth": 30,
+      "role": "forearm",
+      "side": "R",
+      "filename": "forearm_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "thigh_back_L": {
+      "top": [
+        256,
+        204
+      ],
+      "bottom": [
+        256,
+        309
+      ],
+      "length": 105,
+      "nominalWidth": 42,
+      "role": "thigh",
+      "side": "L",
+      "filename": "thigh_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "thigh_back_R": {
+      "top": [
+        256,
+        204
+      ],
+      "bottom": [
+        256,
+        309
+      ],
+      "length": 105,
+      "nominalWidth": 42,
+      "role": "thigh",
+      "side": "R",
+      "filename": "thigh_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "shin_back_L": {
+      "top": [
+        256,
+        204
+      ],
+      "bottom": [
+        256,
+        309
+      ],
+      "length": 105,
+      "nominalWidth": 36,
+      "role": "shin",
+      "side": "L",
+      "filename": "shin_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "shin_back_R": {
+      "top": [
+        256,
+        204
+      ],
+      "bottom": [
+        256,
+        309
+      ],
+      "length": 105,
+      "nominalWidth": 36,
+      "role": "shin",
+      "side": "R",
+      "filename": "shin_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "paw_hand_back_L": {
+      "center": [
+        256,
+        256
+      ],
+      "diameter": 44,
+      "role": "paw_hand",
+      "side": "L",
+      "filename": "paw_hand_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "paw_hand_back_R": {
+      "center": [
+        256,
+        256
+      ],
+      "diameter": 44,
+      "role": "paw_hand",
+      "side": "R",
+      "filename": "paw_hand_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "paw_foot_back_L": {
+      "center": [
+        256,
+        256
+      ],
+      "diameter": 46,
+      "role": "paw_foot",
+      "side": "L",
+      "filename": "paw_foot_back_L.png",
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "paw_foot_back_R": {
+      "center": [
+        256,
+        256
+      ],
+      "diameter": 46,
+      "role": "paw_foot",
+      "side": "R",
+      "filename": "paw_foot_back_R.png",
+      "canvas": [
+        512,
+        512
+      ]
+    }
+  },
+  "notes": {
+    "head": "Head canvas is locally centered at (256,256); place head relative to torso using renderOffset [0,-101].",
+    "limb": "Segment pivot coordinates refer to full 512x512 transparent image; render through rotation and translation from top toward bottom, scale one-to-one.",
+    "verify": "First pass prototype. Test texture joins and visual proportions in bear-test.html before production replacement.",
+    "shadow": "No baked game-stage drop shadows or pivot markers."
+  }
+}
