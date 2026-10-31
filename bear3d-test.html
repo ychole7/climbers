@@ -1,0 +1,816 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>영차영차 3D 곰 실험실</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+/* 레이아웃: 화면 전체가 암벽(캔버스), HUD는 위아래 가장자리에 얇게 떠 있음. 실내 암장 합판·초크·매트의 세계 */
+:root{
+  --wood:#6e452e;        /* 바깥 프레임 */
+  --ply:#efe3cf;         /* 합판 벽 */
+  --ink:#4f2f1c;         /* 글자 */
+  --paper:#fff8ea;       /* HUD 카드 */
+  --chalk:#ffffff;
+  --go:#58c48a;          /* 잡을 수 있음 */
+  --warn:#f2a93b;        /* 팔이 거의 다 뻗음 */
+  --bad:#e5604f;         /* 안 닿음 / 그립 부족 */
+  --display:'Jua','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  --body:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--wood);color:var(--ink);font-family:var(--body);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--go);outline-offset:2px}
+.game{position:relative;width:min(100%,470px);height:100%;margin:0 auto;overflow:hidden;background:var(--ply);touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;left:0;right:0;z-index:5;pointer-events:none;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+.hud.top{top:0;padding-top:calc(8px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;align-items:stretch}
+.pill{background:var(--paper);border-radius:14px;padding:6px 11px;box-shadow:0 3px 0 #c9a27c,0 6px 14px #4f2f1c33;font-family:var(--display);font-size:17px;display:flex;align-items:center;gap:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill small{font-family:var(--body);font-size:11px;font-weight:700;opacity:.65}
+.pill.grow{flex:1;min-width:0;justify-content:center}
+.pill.course{border:0;pointer-events:auto;overflow:hidden;text-overflow:ellipsis}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.list button{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;text-align:left;border:0;border-radius:14px;padding:10px 12px;background:#f6ead6;box-shadow:0 3px 0 #d8bb94}
+.list button.cur{background:#d9f2e3;box-shadow:0 3px 0 #8fcfaa}
+.list b{font-family:var(--display);font-weight:400;font-size:20px}
+.list span{font-size:13px;line-height:1.3}.list span small{display:block;opacity:.7;font-size:11px}
+.list em{font-style:normal;font-size:13px;letter-spacing:1px}
+.tag{display:inline-block;background:#ffe9a6;border-radius:10px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
+.toast{align-self:center;max-width:94%;background:#3a2112;color:#fff;border:2px solid #ffe9a6;border-radius:14px;padding:9px 16px;font-size:14px;font-weight:800;line-height:1.4;text-align:center;text-wrap:balance;box-shadow:0 4px 12px #2b170c80;transition:opacity .25s,transform .25s}
+.toast.hide{opacity:0;transform:translateY(-6px)}
+.hud.bottom{bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.grip{background:var(--paper);border-radius:16px;padding:7px 12px 9px;box-shadow:0 3px 0 #c9a27c,0 6px 14px #4f2f1c33;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.grip b{font-family:var(--display);font-weight:400;font-size:16px}
+.bar{height:14px;border-radius:9px;background:#e8d6bd;overflow:hidden;box-shadow:inset 0 2px 3px #0002}
+.bar i{display:block;height:100%;width:100%;border-radius:9px;background:var(--go);transition:background .3s}
+.grip.low .bar i{background:var(--bad);animation:blink .6s infinite}
+.grip .rate{font-size:12px;font-weight:800;min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;pointer-events:auto}
+.btns button{border:0;border-radius:14px;background:var(--paper);box-shadow:0 3px 0 #c9a27c;padding:8px 0;font-family:var(--display);font-size:16px}
+.btns button:active{transform:translateY(2px);box-shadow:0 1px 0 #c9a27c}
+.btns button:disabled{opacity:.45}
+.btns .hint{background:#ffe9a6}
+.modal[hidden]{display:none}
+.modal{position:absolute;inset:0;z-index:20;background:#2b170cb3;display:flex;align-items:center;justify-content:center;padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px))}
+.card{background:var(--paper);border-radius:24px;padding:22px 20px 18px;width:min(330px,100%);text-align:center;box-shadow:0 10px 0 #b58457;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+.card h2{font-family:var(--display);font-weight:400;font-size:28px;margin:0 0 6px;text-wrap:balance}
+.card p{margin:6px 0;line-height:1.55;font-size:14px}
+.stars{font-size:42px;letter-spacing:6px;margin:6px 0}
+.stars span{display:inline-block;filter:grayscale(1) opacity(.3)}
+.stars span.on{filter:none;animation:star .5s cubic-bezier(.3,1.8,.5,1) backwards}
+.goals{text-align:left;background:#f6ead6;border-radius:14px;padding:8px 12px;font-size:13px;line-height:1.9}
+.goals .ok{color:#2f8f5a;font-weight:800}.goals .no{color:#a58a70}
+.card .act{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.card .act button{border:0;border-radius:14px;padding:12px 18px;font-family:var(--display);font-size:18px;background:var(--go);color:#fff;box-shadow:0 3px 0 #2f8f5a}
+.card .act button.sec{background:#e3c9a6;color:var(--ink);box-shadow:0 3px 0 #b58457}
+.fxp{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:calc(118px + env(safe-area-inset-top,0px));z-index:6;display:flex;flex-direction:column;gap:5px;pointer-events:auto}
+.fxp[hidden]{display:none}
+.fxp button{border:0;border-radius:11px;padding:5px 9px;font-size:12px;font-weight:800;text-align:left;background:#e8d6bd;color:#8a6a50;box-shadow:0 2px 0 #c9a27c}
+.fxp button.on{background:#d9f2e3;color:#24603f;box-shadow:0 2px 0 #8fcfaa}
+.fxp .sl{font-size:11px;font-weight:800;color:#6e452e;background:#fff8ea;border-radius:10px;padding:3px 8px 2px;display:flex;flex-direction:column;box-shadow:0 2px 0 #c9a27c}
+.fxp input[type=range]{width:100%;margin:2px 0 0;touch-action:none}
+.fxp hr{border:0;border-top:2px dashed #c9a27c;margin:2px 0;width:100%}
+.fxp button.ab{background:#3a2112;color:#ffe9a6;text-align:center}
+@keyframes blink{50%{opacity:.45}}@keyframes pop{from{transform:scale(.7);opacity:0}}@keyframes star{from{transform:scale(0) rotate(-90deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<main class="game" id="game">
+  <canvas id="cv" aria-label="곰돌이 클라이밍 벽. 곰돌이의 손이나 발을 끌어서 홀드에 놓으세요."></canvas>
+  <div class="hud top">
+    <div class="row">
+      <button class="pill grow course" id="course" type="button"><small id="courseNo">코스 1</small> <span id="courseName">숨은 발판</span> <small>▾</small></button>
+      <div class="pill">🍯 <span id="honey">0/2</span></div>
+      <div class="pill">🐾 <span id="moves">0</span></div>
+      <button class="pill course" id="fxBtn" type="button" style="flex:none">🎬</button>
+    </div>
+    <div class="toast" id="toast">곰돌이의 손이나 발을 끌어서 홀드에 놓아 봐!</div>
+  </div>
+  <div class="hud bottom">
+    <div class="grip" id="grip"><b>✊ 그립</b><div class="bar"><i id="gripBar"></i></div><span class="rate" id="gripRate"></span></div>
+    <div class="btns">
+      <button id="undo" type="button">↶ 되돌리기</button>
+      <button id="hint" class="hint" type="button">💡 힌트</button>
+      <button id="restart" type="button">⟳ 처음부터</button>
+    </div>
+  </div>
+  <div class="fxp" id="fxp">
+    <button type="button" data-k="r2d">🖼 PNG (2D)</button>
+    <button type="button" data-k="r3d">🧸 3D 곰돌이</button>
+    <button type="button" data-k="rgh">👻 겹쳐 보기</button>
+    <label class="sl">시점 좌↔우<input type="range" id="viewS" min="-60" max="60" value="-25"></label>
+    <label class="sl">몸통 옆 기울임<input type="range" id="leanS" min="-100" max="100" value="0"></label>
+    <hr>
+    <button type="button" data-k="link">🔗 몸통·어깨 붙이기</button>
+    <button type="button" data-k="reach">✋ ① 멀리 뻗기</button>
+    <button type="button" data-k="dangle">🦶 ② 발 떼기</button>
+    <button type="button" data-k="hold">💦 ③ 버티기</button>
+    <button type="button" data-k="force">🔒 버티기 고정(테스트)</button>
+    <button type="button" data-k="slow">🐢 느리게 보기</button>
+    <button type="button" data-k="ab" class="ab">A/B 전체 켜기·끄기</button>
+  </div>
+  <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="reach-core.js"></script>
+<script>
+'use strict';
+let S=STAGES[0],SI=0,VW=860,OX=80;const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+let PAR=20;const parOf=s=>{s._par??=(solve(s,s.start,[],true)||{moves:20}).moves+Math.max(3,Math.round(s.holds.length/6));return s._par};
+let STARS={};try{STARS=JSON.parse(localStorage.getItem('climbers.reach.v2')||'{}')}catch(e){}
+const HOLD_SIZE={jug:84,crimp:72,sloper:94,pinch:78,pocket:80,sidepull:84,undercling:84,volume:98,chip:40};
+// 볼트(접점)가 이미지 중앙에서 벗어난 만큼 보정 (256 기준 오프셋을 -1~1로 정규화). 그린 크기에 곱해 이동.
+const HOLD_ANCHOR={jug:[0,.20],crimp:[.16,-.26],sloper:[-.02,-.16],pinch:[0,.03],undercling:[0,-.16],pocket:[.14,-.18],sidepull:[.08,-.06],volume:[-.10,0],chip:[.04,0]};
+const IMG={};['jug','crimp','sloper','pinch','pocket','sidepull','undercling','volume'].forEach(t=>{IMG[t]=new Image();IMG[t].src=`assets/holds/${t}.png`});IMG.chip=new Image();IMG.chip.src='assets/holds/footchip.png';
+const WALL=new Image();WALL.src='assets/scenery/wall.webp';let wallPat=null;
+const SCN={};['window','banner','plant','mat'].forEach(n=>{SCN[n]=new Image();SCN[n].src=`assets/scenery/${n}.png`});
+const USE_BEAR_ART=false; // 구 정면 몸통 미사용(후면 3/4 기본)
+// 후면 3/4 자산 (몸통+머리)
+const BACK={};['bear_body_back','bear_head_back','bear_head_turn_L','bear_head_turn_R'].forEach(n=>{BACK[n]=new Image();BACK[n].src=`assets/characters/ik_back/${n}.png`});
+BACK.bear_head_turn_L_strain=new Image();BACK.bear_head_turn_L_strain.src='assets/characters/ik_back/bear_head_turn_L_strain.png'; // v2 미포함 → 1차 strain 머리 유지
+const USE_BACK34=true; // 후면 3/4 시점 적용
+// 직선형 IK 파츠 V1 (세그먼트별 회전 렌더)
+// 후면 3/4: 팔다리도 후면 전용 파츠(ik_back) 사용. 키는 동일(upperarm_L 등)로 매핑.
+const IKIMG={};['upperarm','forearm','thigh','shin','paw_hand','paw_foot'].forEach(k=>{['L','R'].forEach(s=>{const n=k+'_'+s;IKIMG[n]=new Image();IKIMG[n].src=`assets/characters/ik_back/${k}_back_${s}.png`})});
+const USE_IK_ART=true; // true면 이미지 세그먼트, false면 기존 선 팔다리
+// 세그먼트 길이(월드px) — pivots.json 기준
+const SEG={upperarm:115,forearm:115,thigh:105,shin:105};
+// 세그먼트: 윗피벗 a→아랫피벗 b로 회전. wScale=두께배율, extend=겹침px, lenMul=보이는 길이배율(IK길이는 유지)
+function segImg(name,a,b,segLen,topY,wScale,extend,lenMul){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  wScale=wScale||1;extend=extend||0;lenMul=lenMul||1;
+  const ang=Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2; // 이미지 기본 방향=아래(+y)
+  const S=(Math.hypot(b.x-a.x,b.y-a.y)+extend)/segLen*lenMul; // 보이는 길이만 lenMul만큼 축소
+  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);ctx.scale(wScale,S);
+  ctx.drawImage(img,-256,-topY); // 이미지 top(256,topY)이 원점(=a)에
+  ctx.restore();return true;
+}
+function pawImg(name,x,y,diam){
+  const img=IKIMG[name];if(!img||!img.complete||!img.naturalWidth)return false;
+  const S=diam/44,w=512*S;ctx.save();ctx.translate(x,y);ctx.drawImage(img,-256*S,-256*S,w,w);ctx.restore();return true;
+}
+const bendSign=[0,0,0,0]; // 각 팔다리 관절 꺾임 부호 기억(이력)
+// 이미지 팔다리 하나(2세그먼트+손발). T=몸통중심(연결부 겹침용)
+function limbIK(a,p,L,bend,i,T){
+  const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
+  const hand=i<2,leftLimb=(i%2===0);
+  // 관절 꺾임 방향 선택. 목표: 팔꿈치는 아래로, 무릎은 바깥(좌우로 벌어지게). 급격한 뒤집힘은 이력으로 억제.
+  // 기준: 어깨→손 수직벡터(nx,ny). bs=+1/-1에 따라 팔꿈치가 수직벡터의 어느 쪽으로 가는지 결정.
+  const nx=-dy/d,ny=dx/d;
+  // 선호 방향: 팔=팔꿈치가 아래(+y)로 가는 쪽, 다리=무릎이 바깥(왼다리는 왼쪽 -x, 오른다리는 오른쪽 +x)으로.
+  let prefVec = hand ? {x:0,y:1} : {x:(leftLimb?-1:1),y:0.25};
+  const dotPos = nx*prefVec.x+ny*prefVec.y;      // bs=+1일 때 관절이 선호방향과 이루는 정렬도
+  let want = dotPos>=0 ? 1 : -1;                  // 선호방향에 맞는 bs
+  // 이력(hysteresis): 직전 프레임 부호를 유지하되, 선호도가 충분히 반대(|dotPos|>0.35)일 때만 뒤집음
+  const prev=bendSign[i];
+  let bs;
+  if(prev===0) bs=want;
+  else if(want===prev) bs=prev;
+  else bs = (Math.abs(dotPos)>0.35) ? want : prev; // 애매하면 유지 → 깜빡임 방지
+  bendSign[i]=bs;
+  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bs,ey=my+(dx/d)*hh*bs; // 팔꿈치/무릎
+  const side=(i%2===0)?'L':'R';
+  const upName=(hand?'upperarm':'thigh')+'_'+side,loName=(hand?'forearm':'shin')+'_'+side;
+  const segUp=hand?SEG.upperarm:SEG.thigh,segLo=hand?SEG.forearm:SEG.shin;
+  const topUp=hand?198.5:203.5,topLo=hand?198.5:203.5;
+  const wUp=hand?1.30:1.34,wLo=hand?1.24:1.28; // 파츠 두께
+  const lenMul=hand?0.88:0.90;                  // 보이는 길이 축소(팔 −12%·다리 −10%) — IK 길이는 유지
+  const elbow={x:ex,y:ey};
+  const uv=(f,t)=>{const dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;return {x:dx/d,y:dy/d}};
+  // 윗마디 시작점을 몸통 중심 쪽으로 당겨 몸통 뒤에 물리게
+  const toward=T?uv(a,T):{x:0,y:0},tuck=hand?6:14;
+  const upStart={x:a.x+toward.x*tuck,y:a.y+toward.y*tuck};
+  // 아래마디: 손발(p)에서 관절 방향으로 짧게 그리되, 관절을 넉넉히 지나 겹침(틈 방지)
+  const dLo=uv(p,elbow),loLen=Math.hypot(p.x-elbow.x,p.y-elbow.y)*lenMul;
+  const loStart={x:p.x+dLo.x*(loLen+40),y:p.y+dLo.y*(loLen+40)}; // 관절 넘어 40px까지
+  // 위마디: 관절에서 몸통 방향으로 짧게. 아래쪽(관절)은 아래마디가 덮으므로 관절까지 그대로.
+  const dUp=uv(elbow,upStart),upLen=Math.hypot(elbow.x-upStart.x,elbow.y-upStart.y)*lenMul;
+  const upDrawStart={x:elbow.x+dUp.x*upLen,y:elbow.y+dUp.y*upLen};
+  segImg(upName,upDrawStart,elbow,segUp,topUp,wUp,22);   // 위마디(관절 22px 지나 겹침)
+  segImg(loName,loStart,p,segLo,topLo,wLo,0);             // 아래마디(손발까지, 관절 덮음)
+  pawImg((hand?'paw_hand':'paw_foot')+'_'+side,p.x,p.y,hand?50:52); // 손발 +8%
+}
+WALL.onload=()=>{try{const t=document.createElement('canvas');t.width=WALL.width*2;t.height=WALL.height*2;const c=t.getContext('2d');
+  // 미러 타일: 2x2로 뒤집어 붙여 반복 경계가 안 보이게
+  c.drawImage(WALL,0,0);c.save();c.translate(t.width,0);c.scale(-1,1);c.drawImage(WALL,0,0);c.restore();
+  c.save();c.translate(0,t.height);c.scale(1,-1);c.drawImage(WALL,0,0);c.restore();
+  c.save();c.translate(t.width,t.height);c.scale(-1,-1);c.drawImage(WALL,0,0);c.restore();
+  wallPat=ctx.createPattern(t,'repeat')}catch(e){wallPat=null}};
+const PX_PER_M=250,mOf=y=>Math.max(0,(S.floor-y-260)/PX_PER_M);
+
+/* ---------- 상태 ---------- */
+let C,stamina,honey,moves,hist,mode,torso,drag=null,ret=[null,null,null,null],snapT=[0,0,0,0],happyT=0,hintMove=null,hintT=0;
+let falls=0,fails=0,taughtFoot=false,camY=0,fallV=0,fallSpin=0,lastBuzz=0,lastTick=0,ampPrev=0,winT=0,parts=[],pops=[];
+let modalTimer=null;
+function reset(){clearTimeout(modalTimer);C=S.start.slice();stamina=S.st||100;honey=[];moves=0;hist=[];mode='play';drag=null;hintMove=null;fails=0;torso={...pose(S,C).torso};camY=clampCam(torso.y-viewH()*.47);parts=[];pops=[];hideModal();hud();say(SI===0&&moves===0?'곰돌이의 손이나 발을 끌어서 홀드에 놓아 봐!':S.tip)}
+function loadStage(i,intro=true){SI=i;S=STAGES[i];scnCache=null;resize();PAR=parOf(S);PANELS=makePanels();TILT=Object.fromEntries(S.holds.map((h,k)=>[h.id,(rng(k+3+i*31)()-.5)*.7]));falls=0;$('courseNo').textContent='코스 '+(i+1);$('courseName').textContent=S.name;reset();
+  if(intro)modal(`<div class="tag">${S.pattern}</div><h2>${S.name}</h2><p>${S.tip}</p>${S.st?`<p><b>시작 그립 ${S.st}</b></p>`:''}`,[['오르기!',()=>{hideModal();sayBrief(S.tip,3500)}]])}
+function snapshot(){return {C:C.slice(),stamina,honey:honey.slice(),moves}}
+
+/* ---------- 사운드 ---------- */
+let ac=null;
+function tone(f,d=.12,type='sine',v=.16,when=0,slide=0){try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const t=ac.currentTime+when,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d+.02)}catch(e){}}
+const SFX={
+  lift:()=>tone(260,.12,'sine',.12,0,420),
+  grab:y=>{tone(160,.08,'square',.09);tone(520+(S.floor-y)*.25,.1,'triangle',.18,.02)},
+  rest:()=>{tone(660,.1,'sine',.08,.08);tone(880,.12,'sine',.07,.15)},
+  no:()=>tone(330,.25,'triangle',.14,0,150),
+  creak:a=>tone(90+a*60,.05,'sawtooth',.03+a*.04),
+  honey:()=>[988,1319,1760].forEach((f,i)=>tone(f,.14,'triangle',.12,i*.07)),
+  fall:()=>tone(900,.9,'triangle',.16,0,80),
+  thud:()=>{tone(70,.25,'sine',.35);tone(120,.12,'square',.05)},
+  win:()=>[523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,.22,'triangle',.14,i*.1))
+};
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+
+/* ---------- 화면 좌표 ---------- */
+let dpr=1,scale=1,cw=0,ch=0;
+function resize(){const r=$('game').getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;scale=Math.min(cw/720,Math.max(cw/860,ch/(S.H+120)));VW=cw/scale;OX=(VW-S.W)/2}
+const viewH=()=>ch/scale;
+const clampCam=y=>{const hb=(document.querySelector('.hud.bottom').offsetHeight-30)/scale,ht=(document.querySelector('.hud.top').offsetHeight)/scale;const hi=S.H-viewH()+hb;return Math.max(Math.min(-80-ht*.5,hi),Math.min(hi,y))};
+function toWorld(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/scale-OX,y:(e.clientY-r.top)/scale+camY}}
+
+/* ---------- HUD ---------- */
+function say(t){const el=$('toast');el.innerHTML=t;el.classList.remove('hide')}
+let toastTimer=null;function sayBrief(t,ms=2200){say(t);clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hide'),ms)}
+function hud(rate=0){
+  $('honey').textContent=`${honey.length}/${honeyIds(S).length}`;$('moves').textContent=`${moves}/${PAR}`;
+  const b=$('gripBar');b.style.width=stamina+'%';b.style.background=stamina>50?'var(--go)':stamina>25?'var(--warn)':'var(--bad)';
+  $('grip').classList.toggle('low',stamina<25);
+  const r=$('gripRate');r.textContent=Math.abs(rate)<.5?'':(rate>0?'▲ 쉬는 중':'▼ '+Math.round(-rate)+'/초');r.style.color=rate>0?'#2f8f5a':'#c4573f';
+  $('undo').disabled=!hist.length||mode!=='play';
+}
+
+/* ---------- 입력 ---------- */
+const FINGER_LIFT=30; // 손가락에 가리지 않도록 살짝 위로
+function pawPos(i){
+  if(drag&&drag.limb===i)return drag.paw;
+  if(ret[i]){const r=ret[i],k=Math.min(1,(performance.now()-r.t)/260),e=1-Math.pow(1-k,3)*(1-k*2.2*(1-k));const h=holdOf(S,C[i]);if(k>=1)ret[i]=null;return {x:r.x+(h.x-r.x)*e,y:r.y+(h.y-r.y)*e}}
+  const h=holdOf(S,C[i]),pair=i<2?1-i:5-i,shared=C[pair]===C[i]&&!(drag&&drag.limb===pair);
+  return {x:h.x+(shared?(i%2?17:-17):0),y:h.y};
+}
+cv.addEventListener('pointerdown',e=>{
+  if(mode!=='play'||drag)return;const w=toWorld(e);
+  let best=-1,bd=95;for(let i=0;i<4;i++){const p=pawPos(i),d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=i}}
+  if(best<0){const near=S.holds.find(h=>Math.hypot(h.x-w.x,h.y-w.y)<60);if(near)sayBrief('홀드를 누르는 게 아니라, <b>곰돌이의 손발</b>을 끌어서 거기에 놓아 줘!');return}
+  cv.setPointerCapture(e.pointerId);
+  // 드래그 중인 손발 기준으로 모든 홀드 분류: ok=잡힘 / taken=다른 손발 사용중 / balance=균형문제 / foot·chip=발/손 전용 / 그 외=안 닿음
+  const reach=new Set(),marks={};
+  for(const h of S.holds){
+    if(C[best]===h.id)continue;
+    const r=canPlace(S,C,best,h.id);
+    if(r.ok){reach.add(h.id);marks[h.id]='ok'}
+    else if(r.why==='taken'||r.why==='match')marks[h.id]='taken';
+    else if(r.why==='sloper'||r.why==='side')marks[h.id]='balance';
+  }
+  drag={limb:best,id:e.pointerId,sx:e.clientX,sy:e.clientY-FINGER_LIFT,finger:{x:w.x,y:w.y-FINGER_LIFT/scale},paw:pawPos(best),reach,marks,cand:null,over:0,t0:performance.now()};
+  hintMove=null;SFX.lift();buzz(8);
+});
+cv.addEventListener('pointermove',e=>{if(drag&&e.pointerId===drag.id){drag.sx=e.clientX;drag.sy=e.clientY-FINGER_LIFT}});
+const endDrag=e=>{if(!drag||e.pointerId!==drag.id)return;release();};
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',e=>{if(drag&&e.pointerId===drag.id){ret[drag.limb]={...drag.paw,t:performance.now()};drag=null}});
+
+function release(){
+  const d=drag,i=d.limb;drag=null;
+  const vis=FX.dangle&&fx.foot&&fx.foot.i===i?{x:fx.foot.x,y:fx.foot.y}:d.paw;fx.foot=null; // ② 처진 발 위치
+  if(d.cand){commit(i,d.cand);if(vis!==d.paw&&mode==='play')ret[i]={...vis,t:performance.now()};return}
+  ret[i]={...vis,t:performance.now()};
+  const near=S.holds.filter(h=>h.id!==C[i]).map(h=>({h,d:Math.hypot(h.x-d.finger.x,h.y-d.finger.y)})).sort((a,b)=>a.d-b.d)[0];
+  if(!near||near.d>85||(performance.now()-d.t0<160))return;
+  const why=canPlace(S,C,i,near.h.id).why;SFX.no();buzz([20,40,20]);
+  if(why==='reach'){
+    fails++;
+    if(isHand(i)&&near.h.y<holdOf(S,C[i]).y-20){
+      if(fails>=2&&!taughtFoot){say('🦶 <b>발을 먼저 올려 봐!</b> 발이 높아지면 몸이 올라가서 손이 더 멀리 닿아.');taughtFoot='pulse'}
+      else sayBrief('으앗, 팔이 짧아! 몸을 더 올릴 방법이 없을까?',2600);
+    }else sayBrief('거기까진 안 닿아! 동그라미 안쪽만 닿을 수 있어.');
+  }
+  else if(why==='chip')sayBrief('작은 발판은 <b>발</b>로만 디딜 수 있어.');
+  else if(why==='sloper')sayBrief('슬로퍼는 둥글고 미끄러워. <b>몸을 홀드 바로 아래</b>로 가져온 다음 잡아!');
+  else if(why==='cross')sayBrief('팔다리가 꼬여 버려! 다른 쪽 손발로 잡아 봐.');
+  else if(why==='taken')sayBrief('거기엔 이미 다른 손발이 있어.');
+}
+function commit(i,id){
+  hist.push(snapshot());const h=holdOf(S,id),from=pawPos(i);
+  C[i]=id;moves++;snapT[i]=performance.now();happyT=performance.now();
+  if(isHand(i))stamina=Math.max(1,stamina-({crimp:4,sloper:3,pinch:2}[h.type]||0));
+  SFX.grab(h.y);buzz(18);chalk(h.x,h.y,9);pop(h.x,h.y-50,moves%3?'탁!':'영차!');
+  if(h.honey&&!honey.includes(id)){honey.push(id);setTimeout(()=>{SFX.honey();buzz([10,30,10])},120);pop(h.x+30,h.y-90,'🍯 +1','#ffd23f')}
+  if(isWin(S,C))return win();
+  if(!isHand(i)&&taughtFoot==='pulse'){taughtFoot=true;sayBrief('좋아! 몸이 올라갔지? 이제 손을 뻗어 봐 ✋',3000)}
+  else if(moves===1)sayBrief('잘했어! 손발을 하나씩 옮기며 위로 🧗',2200);
+  else if(h.type==='crimp'&&isHand(i))sayBrief('크림프는 잡고 있는 동안 그립이 빨리 줄어! 오래 머물지 마.',2600);
+  else $('toast').classList.add('hide');
+}
+
+/* ---------- 시뮬레이션 ---------- */
+let rateNow=0,amp=0,strain=0;
+function step(dt){
+  const now=performance.now();
+  if(mode==='play'){
+    let target,st;
+    if(drag){
+      const r=cv.getBoundingClientRect();drag.finger={x:(drag.sx-r.left)/scale-OX,y:(drag.sy-r.top)/scale+camY};
+      let p=pose(S,C,drag.limb,drag.finger);if(!p.ok)p=pose(S,C,drag.limb);
+      target=p.torso;
+      const a=anchor(torso,drag.limb),dx=drag.finger.x-a.x,dy=drag.finger.y-a.y,dist=Math.hypot(dx,dy),L=BEAR.len[drag.limb];
+      drag.over=dist/L;const k=Math.min(1,L/dist||1);
+      drag.paw={x:a.x+dx*k,y:a.y+dy*k};
+      // 놓으면 잡힐 홀드
+      let cand=null,cd=78;for(const id of drag.reach){const h=holdOf(S,id),d=Math.hypot(h.x-drag.paw.x,h.y-drag.paw.y);if(d<cd){cd=d;cand=id}}
+      if(cand!==drag.cand&&cand){buzz(6);tone(1200,.03,'square',.03)}
+      drag.cand=cand;st=Math.max(p.strain,Math.min(1,drag.over));
+    }else{const p=pose(S,C);target=p.torso;st=p.strain}
+    strain=st;
+    torso.x+=(target.x-torso.x)*(1-Math.exp(-dt*11));torso.y+=(target.y-torso.y)*(1-Math.exp(-dt*11));
+    amp=Math.max(0,Math.min(1,(st-.84)/.17));
+    // 그립: 잡은 손 홀드 + 뻗은 정도
+    let rate=drag?-4:2;C.forEach((id,i)=>{if(isHand(i)&&!(drag&&drag.limb===i))rate+=HOLD_RATE[holdOf(S,id).type]});
+    rate-=Math.max(0,st-.92)*60;rateNow=rate;
+    stamina=Math.max(0,Math.min(100,stamina+rate*dt));
+    if(amp>.05&&now-lastBuzz>280-amp*200){lastBuzz=now;buzz(Math.round(5+amp*12))}
+    if(amp>.2&&now-lastTick>320-amp*220){lastTick=now;SFX.creak(amp)}
+    if(stamina<=0)startFall();
+    camTo(torso.y-viewH()*.47+(drag&&drag.finger.y<camY+viewH()*.22?-120:0),dt,5);
+    hud(rate);
+  }else if(mode==='fall'){
+    fallV+=2600*dt;torso.y+=fallV*dt;fallSpin+=dt*9;
+    const ground=S.floor-70;if(torso.y>=ground){torso.y=ground;if(fallV>300){SFX.thud();buzz([60,40,80]);chalk(torso.x,S.floor,16);shakeT=now;fallV=-fallV*.25}else{fallV=0;if(mode==='fall'){mode='down';clearTimeout(modalTimer);modalTimer=setTimeout(showFall,500)}}}
+    camTo(torso.y-viewH()*.55,dt,8);
+  }else if(mode==='down'||mode==='win'){camTo(torso.y-viewH()*(mode==='win'?.45:.55),dt,4)}
+  parts=parts.filter(p=>{p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;return p.t<p.life});
+  pops=pops.filter(p=>(p.t+=dt)<1);
+  fxStep(dt);
+}
+let shakeT=0;
+function camTo(y,dt,k){camY+=(clampCam(y)-camY)*(1-Math.exp(-dt*k))}
+function startFall(){mode='fall';falls++;drag=null;fallV=-200;fallSpin=0;SFX.fall();buzz([30,30,30,30,90]);say('으아아아—!');}
+function showFall(){
+  modal(`<h2>미끄덩… 쿵!</h2><p>그립이 다 떨어졌어.<br>크림프에 오래 매달리거나 팔다리를 끝까지 뻗고 있으면 그립이 빨리 줄어.</p>`,
+    [['↶ 한 수 전으로',()=>{const h=hist.pop()||{C:S.start.slice(),stamina:100,honey:[],moves:0};C=h.C;honey=h.honey;moves=h.moves;stamina=Math.max(h.stamina,Math.min(60,S.st||100));mode='play';torso={...pose(S,C).torso};hideModal();sayBrief('다시 해 보자! 이번엔 덜 뻗는 길로.')},'sec'],['⟳ 처음부터',reset]]);
+}
+function win(){
+  hud();mode='win';winT=performance.now();SFX.win();buzz([20,40,20,40,80]);confetti();say('🏁 정상 도착!');
+  const all=honeyIds(S).length,gotAll=honey.length===all,clean=falls===0&&moves<=PAR,stars=1+(gotAll?1:0)+(gotAll&&clean?1:0);
+  STARS[SI]=Math.max(STARS[SI]||0,stars);try{localStorage.setItem('climbers.reach.v2',JSON.stringify(STARS))}catch(e){}
+  const ok=(b,t)=>`<div class="${b?'ok':'no'}">${b?'✔':'○'} ${t}</div>`;
+  clearTimeout(modalTimer);modalTimer=setTimeout(()=>modal(`<h2>완등 성공!</h2><div class="stars">${[0,1,2].map(i=>`<span class="${i<stars?'on':''}" style="animation-delay:${.15+i*.25}s">⭐</span>`).join('')}</div>
+    <div class="goals">${ok(true,'정상 도착')}${ok(gotAll,`꿀단지 모두 (${honey.length}/${all})`)}${ok(gotAll&&clean,`안 떨어지고 ${PAR}수 이내 (이번 ${moves}수${falls?`, ${falls}번 낙하`:''})`)}</div>`,
+    SI<STAGES.length-1?[['다시',()=>{falls=0;reset()},'sec'],['다음 코스 ▶',()=>loadStage(SI+1)]]:[['다시',()=>{falls=0;reset()},'sec'],['코스 목록',courseMenu]]),1500);
+}
+
+/* ---------- 이펙트 ---------- */
+function chalk(x,y,n){for(let k=0;k<n;k++){const a=Math.random()*Math.PI*2,v=60+Math.random()*120;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-40,g:60,t:0,life:.5+Math.random()*.4,r:6+Math.random()*8,c:'#ffffff'})}}
+function confetti(){const cols=['#ff7b7b','#ffd23f','#58c48a','#7fb8ff','#d59cff'];for(let k=0;k<90;k++){const a=-Math.PI/2+(Math.random()-.5)*2.2,v=400+Math.random()*500;parts.push({x:torso.x,y:torso.y-120,vx:Math.cos(a)*v,vy:Math.sin(a)*v,g:900,t:0,life:1.6+Math.random(),r:7,c:cols[k%5],sq:true,rot:Math.random()*6})}}
+function pop(x,y,t,c='#fff'){pops.push({x,y,t:0,text:t,c})}
+
+/* ---------- 힌트 ---------- */
+$('hint').onclick=()=>{
+  if(mode!=='play')return;say('💡 생각 중…');
+  setTimeout(()=>{let r=solve(S,C,honey,true),msg='반짝이는 손발을 저 홀드로!';if(!r){r=solve(S,C,honey,false);msg='이 자세에선 꿀을 다 못 모아. 정상만 노린다면 이쪽!'}
+    if(!r){say('여기선 정상에 갈 수 없어. ↶ 되돌리기!');return}
+    hintMove=r.path[0];hintT=performance.now();say(`💡 <b>${BEAR.name[hintMove.limb]}</b>을 반짝이는 홀드로! <small>(꿀까지 ${r.moves}수 남음)</small>`)},30);
+};
+$('undo').onclick=()=>{if(!hist.length||mode!=='play')return;const h=hist.pop();C=h.C;stamina=h.stamina;honey=h.honey;moves=h.moves;hintMove=null;sayBrief('한 수 되돌렸어.')};
+$('restart').onclick=()=>{falls=0;reset()};
+function courseMenu(){modal(`<h2>코스</h2><div class="list">${STAGES.map((s,i)=>`<button type="button" data-i="${i}" class="${i===SI?'cur':''}"><b>${i+1}</b><span>${s.name}<small>${s.pattern}</small></span><em>${'★'.repeat(STARS[i]||0)}${'☆'.repeat(3-(STARS[i]||0))}</em></button>`).join('')}</div>`,[['닫기',hideModal,'sec']]);$('card').querySelectorAll('.list button').forEach(b=>b.onclick=()=>loadStage(+b.dataset.i))}
+$('course').onclick=()=>{if(mode==='play'&&!drag)courseMenu()};
+function modal(html,btns){$('card').innerHTML=html+`<div class="act">${btns.map((b,k)=>`<button type="button" data-k="${k}" class="${b[2]||''}">${b[0]}</button>`).join('')}</div>`;$('card').querySelectorAll('button').forEach(b=>b.onclick=()=>btns[+b.dataset.k][1]());$('modal').hidden=false}
+function hideModal(){$('modal').hidden=true}
+
+/* ---------- 그리기 ---------- */
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let PANELS,TILT;const makePanels=()=>{const r=rng(7+SI),cols=['#f6c3b3','#c4dcf1','#f7e0a0','#cfe6c6','#ddd0f1'],out=[];for(let y=-200;y<S.H;y+=260){const n=2+Math.floor(r()*2);for(let k=0;k<n;k++){const x=r()*S.W,w=180+r()*260,h=160+r()*240;out.push({pts:[[x,y],[x+w*(r()>.5?1:-1),y+h*.3],[x+w*.3,y+h]],c:cols[Math.floor(r()*5)]})}}return out};
+// 분위기 요소 배치 (월드 좌표). 플레이 홀드와 안 겹치게 자동 회피.
+// 코스별로 한 번 계산해 캐시. 후보 위치 중 홀드와 안 겹치는 곳만 채택.
+const HSZ_=()=>HOLD_SIZE;
+let scnCache=null,scnKey=null;
+function hitsHold(x0,y0,x1,y1){
+  for(const h of S.holds){const r=HOLD_SIZE[h.type]*0.5;
+    if(x1>h.x-r&&x0<h.x+r&&y1>h.y-r&&y0<h.y+r)return true}
+  return false;
+}
+function scenery(){
+  if(scnCache&&scnKey===SI)return scnCache;
+  const W=S.W,topY=holdOf(S,S.goal).y-140,r=rng(100+SI*7);
+  const AR={window:700/560,banner:1050/420,plant:600/480};
+  const place=(img,w,x,y,ab,flip)=>{const h=w*AR[img],top=ab?y-h:y-h/2;return {img,x,y:top,w,h,flip}};
+  const out=[],used=[];
+  // 창문: 양쪽 가장자리 여러 높이 후보 중 홀드와 안 겹치는 2~3곳
+  const slots=[];for(let yy=topY+280;yy<S.floor-260;yy+=360)slots.push(yy);
+  let side=0;
+  for(const yy of slots){
+    const w=130+r()*30,x=side? W*(0.86+r()*0.06):W*(0.10+r()*0.06),h=w*AR.window,top=yy-h/2;
+    if(!hitsHold(x-w/2-10,top-10,x+w/2+10,top+h+10)){out.push({img:'window',x,y:top,w,h,flip:side});used.push([x-w/2,top,x+w/2,top+h]);side^=1}
+  }
+  // 현수막: 최상단, 홀드 없는 쪽
+  {const w=90,h=w*AR.banner,y=topY+120,x=W*0.90,top=y-h/2;
+    if(!hitsHold(x-w/2,top,x+w/2,top+h))out.push({img:'banner',x,y:top,w,h});}
+  // 화분: 바닥 양쪽 구석 (홀드는 바닥 근처에 거의 없음)
+  [[W*0.08,120,0],[W*0.93,105,1]].forEach(([x,w,flip])=>{const h=w*AR.plant,top=S.floor-40-h;
+    if(!hitsHold(x-w/2,top,x+w/2,top+h))out.push({img:'plant',x,y:top,w,h,flip})});
+  scnCache=out;scnKey=SI;return out;
+}
+function drawScenery(){
+  const y0=camY-400,y1=camY+viewH()+400;
+  // 벽에 붙은 장식 (홀드 뒤, 벽 위). 반투명하게 깔아 홀드가 묻히지 않게.
+  for(const d of scenery()){
+    const img=SCN[d.img];if(!img.complete||!img.naturalWidth)continue;
+    if(d.y>y1||d.y+d.h<y0)continue;
+    ctx.save();ctx.globalAlpha=.92;
+    if(d.flip){ctx.translate(d.x,0);ctx.scale(-1,1);ctx.drawImage(img,-d.w/2,d.y,d.w,d.h)}
+    else ctx.drawImage(img,d.x-d.w/2,d.y,d.w,d.h);
+    ctx.restore();
+  }
+}
+function drawMat(){ // 바닥 안전 매트 (시작 지점 바닥에만)
+  const y1=camY+viewH()+50;if(S.floor>=y1)return;
+  const img=SCN.mat;if(img.complete&&img.naturalWidth){
+    const w=VW+40,h=w*img.height/img.width;ctx.drawImage(img,-OX-20,S.floor-h*0.18,w,h);
+  }else{ctx.fillStyle='#5f8fcc';roundRect(-OX-20,S.floor,VW+40,200,30);ctx.fill()}
+}
+function drawWall(){
+  const y0=camY-50,y1=camY+viewH()+50;
+  ctx.fillStyle='#efe3cf';ctx.fillRect(-OX,y0,VW,y1-y0);
+  if(wallPat){ // ChatGPT 1차 벽 텍스처 (미러 타일 반복)
+    ctx.save();ctx.fillStyle=wallPat;ctx.fillRect(-OX,y0,VW,y1-y0);ctx.restore();
+  }else{ // 폴백: 기존 절차적 벽 (텍스처 로드 실패 시)
+    ctx.globalAlpha=.55;PANELS.forEach(p=>{if(p.pts[0][1]>y1||p.pts[2][1]<y0-400)return;ctx.fillStyle=p.c;ctx.beginPath();p.pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.fill()});ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(120,85,55,.18)';ctx.lineWidth=3;ctx.beginPath();[233,466].forEach(x=>{ctx.moveTo(x,y0);ctx.lineTo(x,y1)});for(let y=Math.floor(y0/400)*400;y<y1;y+=400){ctx.moveTo(-OX,y);ctx.lineTo(S.W+OX,y)}ctx.stroke();
+    ctx.fillStyle='rgba(70,45,25,.2)';for(let y=Math.floor(y0/70)*70+35;y<y1;y+=70)for(let x=35-140;x<S.W+OX;x+=70){ctx.beginPath();ctx.arc(x,y,3.2,0,7);ctx.fill()}
+  }
+  // 높이 눈금 (실제 암장처럼 m 표기)
+  ctx.fillStyle='rgba(79,47,28,.55)';ctx.font='700 22px Jua, sans-serif';ctx.textAlign='left';
+  for(let m=1;m<10;m++){const y=S.floor-260-m*PX_PER_M;if(y<y0||y>y1)continue;ctx.fillRect(-OX,y-2,26,4);ctx.fillText(m+'m',-OX+30,y+8)}
+  // 정상 립
+  const top=holdOf(S,S.goal).y-140;if(top>y0-100){ctx.fillStyle='#8a5a3a';ctx.fillRect(-OX,top-40,VW,40);ctx.fillStyle='#a8724c';ctx.fillRect(-OX,top-60,VW,22);ctx.fillStyle='#fff8ea';ctx.font='26px Jua, sans-serif';ctx.textAlign='center';ctx.fillText('— 정상 TOP —',S.W/2,top-12);ctx.fillStyle='#6e452e';ctx.fillRect(-OX,-500,VW,top-60+500)}
+  drawMat();
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function drawHolds(t){
+  for(const h of S.holds){
+    if(h.y<camY-120||h.y>camY+viewH()+120)continue;
+    const sz=HOLD_SIZE[h.type],reach=drag&&drag.reach.has(h.id),cand=drag&&drag.cand===h.id,hinted=hintMove&&hintMove.id===h.id;
+    const mark=drag&&drag.marks[h.id];
+    if(h.id===S.goal){ctx.save();ctx.fillStyle='rgba(255,210,63,.35)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.75+Math.sin(t*3)*4,0,7);ctx.fill();ctx.restore();ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🏁',h.x+44,h.y-34)}
+    // 드래그 중: 발판(chip) 가시성 ↑ — 어두운 받침 원으로 배경과 분리
+    if(drag&&h.type==='chip'){ctx.save();ctx.fillStyle='rgba(60,40,24,.28)';ctx.beginPath();ctx.arc(h.x,h.y,sz*.62,0,7);ctx.fill();ctx.restore()}
+    // 잡을 수 있음(초록) / 힌트(노랑) / 지금 놓으면 잡힘(cand, 굵게)
+    if(reach||cand||hinted){ctx.save();ctx.strokeStyle=hinted?'#ffcf33':'#45c17d';ctx.lineWidth=cand?10:6;ctx.shadowColor=hinted?'#ffd23f':'#45c17d';ctx.shadowBlur=cand?26:14;ctx.globalAlpha=cand?1:.6+.35*Math.sin(t*6);ctx.beginPath();ctx.arc(h.x,h.y,sz*(cand?.68:.58),0,7);ctx.stroke();ctx.restore()}
+    // 다른 손발 사용중(회색 X)
+    else if(mark==='taken'){ctx.save();ctx.strokeStyle='rgba(120,110,100,.9)';ctx.lineWidth=5;ctx.lineCap='round';const r=sz*.4;ctx.beginPath();ctx.moveTo(h.x-r,h.y-r);ctx.lineTo(h.x+r,h.y+r);ctx.moveTo(h.x+r,h.y-r);ctx.lineTo(h.x-r,h.y+r);ctx.stroke();ctx.restore()}
+    // 균형 문제(주황 점선) — 닿긴 하나 자세가 안 맞음
+    else if(mark==='balance'){ctx.save();ctx.strokeStyle='#e7a638';ctx.lineWidth=5;ctx.setLineDash([7,8]);ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(h.x,h.y,sz*.58,0,7);ctx.stroke();ctx.restore()}
+    const k=cand?1.14:1,img=IMG[h.type];
+    const an=HOLD_ANCHOR[h.type]||[0,0],ax=-an[0]*sz*k,ay=-an[1]*sz*k;
+    ctx.save();ctx.translate(h.x,h.y);ctx.rotate(TILT[h.id]);ctx.shadowColor='rgba(60,35,20,.45)';ctx.shadowBlur=8;ctx.shadowOffsetY=6;
+    // 드래그 중 안 닿는 홀드는 살짝 흐리게(닿는 것과 대비)
+    if(drag&&!reach&&!cand&&mark!=='taken'&&mark!=='balance'&&h.id!==C[drag.limb])ctx.globalAlpha=.78;
+    if(img.complete&&img.naturalWidth)ctx.drawImage(img,ax-sz*k/2,ay-sz*k/2,sz*k,sz*k);else{ctx.fillStyle='#d98';ctx.beginPath();ctx.arc(0,0,sz/3,0,7);ctx.fill()}
+    ctx.restore();
+    if(h.honey&&!honey.includes(h.id)){ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🍯',h.x+sz*.42,h.y-sz*.3+Math.sin(t*3+h.x)*4)}
+  }
+}
+const FUR='#b8794a',FUR2='#a2663b',LINE='#5a3420',BELLY='#f2d6ad',PAD='#e9b394',HARN='#3f7cc7';
+function limb(a,p,L,bend,w,i){
+  let dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1;const half=L/2,dd=Math.min(d,L*.995),hh=Math.sqrt(Math.max(0,half*half-dd*dd/4));
+  const mx=(a.x+p.x)/2,my=(a.y+p.y)/2,ex=mx+(-dy/d)*hh*bend,ey=my+(dx/d)*hh*bend;
+  ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle=LINE;ctx.lineWidth=w+8;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(ex,ey);ctx.lineTo(p.x,p.y);ctx.stroke();
+  ctx.strokeStyle=FUR;ctx.lineWidth=w;ctx.stroke();
+  // 손발
+  const hand=i<2,r=hand?20:23,s=performance.now()-snapT[i]<160?1.25:1;
+  ctx.save();ctx.translate(p.x,p.y);ctx.scale(s,s);ctx.fillStyle=LINE;ctx.beginPath();ctx.ellipse(0,0,r+4,(hand?r:r*.8)+4,0,0,7);ctx.fill();ctx.fillStyle=FUR2;ctx.beginPath();ctx.ellipse(0,0,r,hand?r:r*.8,0,0,7);ctx.fill();
+  ctx.fillStyle=PAD;ctx.beginPath();ctx.ellipse(0,hand?3:2,r*.5,r*.4,0,0,7);ctx.fill();[-1,0,1].forEach(k=>{ctx.beginPath();ctx.arc(k*r*.45,hand?-r*.45:-r*.35,r*.17,0,7);ctx.fill()});ctx.restore();
+}
+/* ---------- 모션 실험 (보이는 연출만 — 규칙·도달거리·홀드좌표·IK 길이 불변) ---------- */
+const FX={link:true,reach:true,dangle:true,hold:true,force:false,slow:false,render:'3d'};
+try{Object.assign(FX,JSON.parse(localStorage.getItem('climbers.fx3d')||'{}'))}catch(e){}
+const fx={rot:0,sx:0,sy:0,dip:0,lead:[{x:0,y:0},{x:0,y:0}],hold:0,head:0,side:1,foot:null};
+const appr=(c,t,dt,k)=>c+(t-c)*(1-Math.exp(-dt*k));
+const visAmp=()=>FX.force&&mode==='play'?.85:amp;
+function fxStep(dt){
+  const play=mode==='play';
+  // ① 멀리 뻗기: 55% 이상 뻗으면 어깨가 먼저 나가고, 상체가 엉덩이 축으로 기울며 따라감
+  let rot=0,sx=0,sy=0,dip=0;const lead=[[0,0],[0,0]];
+  if(FX.reach&&play&&drag&&isHand(drag.limb)){
+    const i=drag.limb,a=anchor(torso,i),dx=drag.paw.x-a.x,dy=drag.paw.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d;
+    const k=Math.max(0,Math.min(1,(drag.over-.55)/.45)),s=k*k*(3-2*k);
+    rot=ux*.14*s;sx=ux*8*s;sy=uy*5*s;lead[i]=[ux*13*s,uy*13*s];
+  }
+  // ② 발 떼기: 떨어진 발은 손가락을 살짝 늦게 따라오며 아래로 처지고 흔들림(감쇠 스프링). 몸은 팔에 매달려 살짝 내려감
+  if(FX.dangle&&play&&drag&&!isHand(drag.limb)){
+    const tg=drag.paw;let f=fx.foot;
+    if(!f||f.i!==drag.limb)f=fx.foot={i:drag.limb,x:tg.x,y:tg.y,vx:0,vy:-60};
+    const sag=drag.cand?4:24,ax=(tg.x-f.x)*95-f.vx*7,ay=(tg.y+sag-f.y)*95-f.vy*7;
+    f.vx+=ax*dt;f.vy+=ay*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;
+    const ox=f.x-tg.x,oy=f.y-tg.y,o=Math.hypot(ox,oy);if(o>44){f.x=tg.x+ox/o*44;f.y=tg.y+oy/o*44}
+    dip=7;rot+=(drag.limb===2?-1:1)*.035;
+  }else if(!drag)fx.foot=null;
+  fx.rot=appr(fx.rot,rot,dt,10);fx.sx=appr(fx.sx,sx,dt,10);fx.sy=appr(fx.sy,sy,dt,10);fx.dip=appr(fx.dip,dip,dt,8);
+  for(let i=0;i<2;i++){fx.lead[i].x=appr(fx.lead[i].x,lead[i][0],dt,14);fx.lead[i].y=appr(fx.lead[i].y,lead[i][1],dt,14)}
+  // ③ 버티기: 힘든 자세(뻗음 84%↑) 또는 그립 25 미만이면 몸통만 부들부들 + 고개 갸웃
+  const hk=FX.hold&&play?Math.max(visAmp(),stamina<25?(25-stamina)/25*.6:0):0;
+  if(fx.hold<.05&&hk>.05)fx.side=drag?(drag.paw.x>torso.x?-1:1):(Math.random()<.5?-1:1); // 뻗는 반대쪽으로 갸웃
+  fx.hold=appr(fx.hold,hk,dt,hk>fx.hold?7:4);
+  fx.head=appr(fx.head,fx.hold*.2*fx.side,dt,6);
+}
+/* ---------- 3D 곰돌이 (Three.js, 직교 + 사선 투영) ----------
+   좌표 약속: 화면(월드) (X,Y,깊이z) → 씬 (X - z*dx, -Y - z*dy, z)
+   카메라 투영은 벽면(z=0)이 2D 캔버스와 1:1로 겹치도록 "평행 사선 투영"(깊이만큼 화면에서 밀림)을 쓴다.
+   → 손발 접점은 2D와 같은 화면 좌표에 정확히 놓이고, 몸통·머리만 후면 3/4로 보인다. */
+let LEAN=0;const VIEW={dx:-.25,dy:-.2};
+const B3=(()=>{
+  const o={ok:false};
+  if(typeof THREE==='undefined')return o;
+  let GL;try{GL=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true})}catch(e){return o}
+  GL.setClearColor(0x000000,0);
+  const scene=new THREE.Scene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,-1000,1000);
+  scene.add(new THREE.AmbientLight(0xffffff,.62));
+  const dl=new THREE.DirectionalLight(0xffffff,.62);dl.position.set(-260,420,520);scene.add(dl);
+  const dl2=new THREE.DirectionalLight(0xffd9b0,.22);dl2.position.set(320,-120,260);scene.add(dl2);
+
+  const ZB=75,ZP=14,HIP_=48;                       // 몸통 깊이(벽에서 떨어진 거리), 손발 중심 깊이
+  const mat=c=>new THREE.MeshLambertMaterial({color:new THREE.Color(c).multiplyScalar(.8)});
+  const hull=new THREE.MeshBasicMaterial({color:LINE,side:THREE.BackSide});
+  const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+  function ball(par,r,c,p={}){
+    const g=new THREE.Group();g.position.set(p.x||0,p.y||0,p.z||0);par.add(g);
+    const sx=p.sx||1,sy=p.sy||1,sz=p.sz||1,ol=p.ol===undefined?5:p.ol;
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r,32,22),mat(c));m.scale.set(sx,sy,sz);g.add(m);
+    if(ol){const h=new THREE.Mesh(new THREE.SphereGeometry(r+ol,32,22),hull);h.scale.set(sx,sy,sz);g.add(h)}
+    g.userData.m=m;return g;
+  }
+  function seg(par,len,r0,r1,c,ol=5){          // +y 방향으로 뻗는 테이퍼 원기둥 (r0=시작, r1=끝)
+    const g=new THREE.Group();par.add(g);
+    const geo=new THREE.CylinderGeometry(r1,r0,len,24,1);geo.translate(0,len/2,0);g.add(new THREE.Mesh(geo,mat(c)));
+    const hg=new THREE.CylinderGeometry(r1+ol,r0+ol,len,24,1);hg.translate(0,len/2,0);g.add(new THREE.Mesh(hg,hull));
+    return g;
+  }
+
+  /* ----- 계층: root → pelvis → (다리 관절, 꼬리, torso → (몸통, 어깨 관절, 머리)) ----- */
+  const root=new THREE.Group();scene.add(root);
+  const pelvis=new THREE.Group();root.add(pelvis);
+  ball(pelvis,58,FUR,{y:14,z:8,sx:1.08,sy:.82,sz:.98});                // 엉덩이
+  ball(pelvis,17,FUR2,{y:14,z:66,ol:4});                                // 꼬리
+  const torso=new THREE.Group();pelvis.add(torso);
+  const BODY={rx:74,ry:80,rz:64,cy:54};
+  ball(torso,1,FUR,{y:BODY.cy,sx:BODY.rx,sy:BODY.ry,sz:BODY.rz,ol:.06});  // 통통한 몸통(구를 타원체로)
+  ball(torso,1,BELLY,{y:BODY.cy-6,z:-34,sx:56,sy:64,sz:40,ol:0});         // 배(벽 쪽, 옆에서 살짝 보임)
+  // 파란 X자 하네스: 등 표면을 따라가는 튜브 2개 + 가운데 버클 + 허리띠
+  const surfZ=(x,y)=>BODY.rz*Math.sqrt(Math.max(.02,1-(x/BODY.rx)**2-((y-BODY.cy)/BODY.ry)**2))+3;
+  function strap(x0,y0,x1,y1){
+    const pts=[];for(let k=0;k<=10;k++){const u=k/10,x=x0+(x1-x0)*u,y=y0+(y1-y0)*u;pts.push(V3(x,y,surfZ(x,y)))}
+    const cv_=new THREE.CatmullRomCurve3(pts);
+    torso.add(new THREE.Mesh(new THREE.TubeGeometry(cv_,28,7.5,10,false),mat(HARN)));
+    torso.add(new THREE.Mesh(new THREE.TubeGeometry(cv_,28,10.5,10,false),hull));
+  }
+  strap(-42,108,40,8);strap(42,108,-40,8);
+  ball(torso,11,'#2b5a96',{y:56,z:surfZ(0,56)+4,ol:2.5,sz:.8});
+  {const g=new THREE.Group();g.position.y=14;g.scale.set(64,64,58);g.rotation.x=0;torso.add(g);
+   const tm=new THREE.Mesh(new THREE.TorusGeometry(1,.12,10,48),mat(HARN));tm.rotation.x=Math.PI/2;g.add(tm)}
+  // 머리
+  const head=new THREE.Group();head.position.set(0,176,0);torso.add(head);
+  ball(head,60,FUR,{sx:1.06,sy:.95,sz:.98});
+  [-1,1].forEach(s=>ball(head,22,FUR,{x:s*46,y:48,z:-4}));
+  [-1,1].forEach(s=>ball(head,12,PAD,{x:s*46,y:48,z:-22,ol:0,sz:.5}));        // 귀 안쪽(벽 쪽)
+  ball(head,28,BELLY,{y:-14,z:-50,sx:1.05,sy:.85,sz:.9});                       // 주둥이
+  ball(head,8,LINE,{y:-4,z:-75,ol:0,sx:1.2,sy:.85});                            // 코
+  const eyes=[-1,1].map(s=>ball(head,7,LINE,{x:s*23,y:10,z:-54,ol:0}));
+  [-1,1].forEach(s=>ball(head,10,'#ff8a78',{x:s*42,y:-8,z:-42,ol:0,sz:.4,sy:.7}));  // 볼터치
+  // 팔다리
+  const ARM={r0:31,r1:28,r2:25,rj:29,rp:40,py:.95},LEG={r0:38,r1:33,r2:29,rj:34,rp:42,py:.8,pz:1.25};
+  function mkLimb(joint,Lreach,Z,spec,side,hand){
+    const total=Math.sqrt(Lreach*Lreach+Z*Z)*1.04,a=total/2;           // 2D 도달 거리 ↔ 3D 완전히 뻗은 길이 (깊이 보정)
+    const up=new THREE.Group();joint.add(up);seg(up,a,spec.r0,spec.r1,FUR);
+    const fore=new THREE.Group();fore.position.set(0,a,0);up.add(fore);ball(fore,spec.rj,FUR);seg(fore,a,spec.r1,spec.r2,FUR);
+    const paw=new THREE.Group();paw.position.set(0,a,0);fore.add(paw);ball(paw,spec.rp,FUR2,{sy:spec.py||1,sz:spec.pz||1});
+    // 발가락 3개(손/발 끝, 벽 쪽 +끝 방향)
+    for(let k=-1;k<=1;k++)ball(paw,hand?6:7,PAD,hand?{x:k*spec.rp*.45,y:spec.rp*.78,z:-spec.rp*.35,ol:0}:{x:k*spec.rp*.5,y:spec.rp*.05,z:-spec.rp*.95,ol:0});
+    const pole=hand?V3(side*.8,-.55,1):V3(side*1,.15,1);                // 팔꿈치/무릎이 꺾이는 방향(바깥·시청자 쪽)
+    return {up,fore,paw,a,total,pole,joint};
+  }
+  const jt=(x,y)=>{const g=new THREE.Group();g.position.set(x,y,0);return g};
+  const shL=jt(-46,90),shR=jt(46,90),hpL=jt(-34,2),hpR=jt(34,2);
+  torso.add(shL,shR);pelvis.add(hpL,hpR);
+  ball(shL,36,FUR);ball(shR,36,FUR);ball(hpL,40,FUR);ball(hpR,40,FUR);
+  const limbs=[mkLimb(shL,BEAR.len[0],ZB,ARM,-1,true),mkLimb(shR,BEAR.len[1],ZB,ARM,1,true),
+               mkLimb(hpL,BEAR.len[2],ZB,LEG,-1,false),mkLimb(hpR,BEAR.len[3],ZB,LEG,1,false)];
+  // 벽 그림자(블롭)
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(1,40),new THREE.MeshBasicMaterial({color:0x3a2112,transparent:true,opacity:.17,depthTest:false,depthWrite:false}));
+  shadow.renderOrder=-10;shadow.scale.set(92,120,1);scene.add(shadow);
+  scene.traverse(n=>{n.frustumCulled=false});
+
+  const Yax=V3(0,1,0),q1=new THREE.Quaternion(),q2=new THREE.Quaternion(),tmp=V3(0,0,0);
+  function aim(g,from,to){                       // g의 +y축이 월드에서 from→to를 향하도록 로컬 회전 설정
+    tmp.copy(to).sub(from).normalize();q1.setFromUnitVectors(Yax,tmp);
+    g.parent.getWorldQuaternion(q2).invert();g.quaternion.copy(q2.multiply(q1));g.updateMatrix();
+  }
+  function ik(S,H,total,pole){                   // 2본 IK: 어깨 S → 손 H, 팔꿈치 위치 반환
+    const a=total/2,ax=H.clone().sub(S),len=ax.length()||1;ax.multiplyScalar(1/len);
+    const d=Math.min(len,total*.9995);
+    const p=pole.clone().sub(ax.clone().multiplyScalar(pole.dot(ax)));if(p.lengthSq()<1e-6)p.set(0,0,1);p.normalize();
+    const h=Math.sqrt(Math.max(0,a*a-d*d/4));
+    return S.clone().addScaledVector(ax,d/2).addScaledVector(p,h);
+  }
+  const appr=(c,t,dt,k)=>c+(t-c)*(1-Math.exp(-dt*k));
+  const sc=(X,Y,z)=>V3(X-z*VIEW.dx,-Y-z*VIEW.dy,z);
+  const st={lastT:0,tYaw:0,tPitch:.1,hYaw:0,hPitch:0,sized:''};
+  const hv=[V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)],ev=[V3(0,0,0),V3(0,0,0),V3(0,0,0),V3(0,0,0)];
+
+  o.ok=true;o.limbs=limbs;o.cam=cam;
+  o.draw=function(F){
+    const {T,P,R,paws,mood,t,tr}=F,now=performance.now(),dt=Math.min(.05,Math.max(.001,(now-st.lastT)/1000));st.lastT=now;
+    const key=cw+'x'+ch+'@'+dpr;if(key!==st.sized){GL.setPixelRatio(dpr);GL.setSize(cw,ch,false);st.sized=key}
+    // 투영: 직교 + 사선(벽면 z=0이 2D와 일치)
+    const M=new THREE.Matrix4().makeOrthographic(-OX,-OX+cw/scale,-camY,-camY-ch/scale,-1000,1000);
+    M.multiply(new THREE.Matrix4().set(1,0,VIEW.dx,0, 0,1,VIEW.dy,0, 0,0,1,0, 0,0,0,1));
+    cam.projectionMatrix.copy(M);cam.projectionMatrixInverse.copy(M).invert();
+    // 몸통 자세 (2D와 같은 프레임 값 사용: P=몸통 중심, R=회전, 엉덩이를 축으로)
+    const fallRot=mode==='fall'?Math.sin(fallSpin)*.5:0,hp=drag&&mode==='play'?drag.paw:null;
+    pelvis.position.copy(sc(P.x-.6*fx.sx,P.y+HIP_,ZB));
+    pelvis.rotation.z=-(R*.4+fallRot);
+    torso.position.set(.6*fx.sx,0,0);torso.rotation.z=-R*.6;
+    let ty=0,tp=.1,hy=Math.sin(t*.6)*.1,hpi=0;
+    if(hp){ty=-Math.max(-1,Math.min(1,(hp.x-T.x)/260))*.32;tp=.1+.12*Math.max(0,Math.min(1,(T.y-hp.y)/300));
+           hy=-Math.max(-1,Math.min(1,(hp.x-T.x)/300))*.9;hpi=Math.max(-.3,Math.min(.45,(T.y-hp.y)/500))}
+    ty+=-LEAN*.28;hy+=-LEAN*.2;
+    st.tYaw=appr(st.tYaw,ty,dt,9);st.tPitch=appr(st.tPitch,tp,dt,9);st.hYaw=appr(st.hYaw,hy,dt,8);st.hPitch=appr(st.hPitch,hpi,dt,8);
+    torso.rotation.y=st.tYaw;torso.rotation.x=st.tPitch;
+    const nod=Math.sin(t*2.3)*.04*tr+Math.sin(t*61)*.01*tr;
+    head.rotation.set(st.hPitch,st.hYaw,R*.4-fx.head-nod);
+    // 표정: 눈 크기
+    const es=mood==='effort'?[1,.3]:mood==='tired'?[1,.22]:mood==='happy'?[1,.45]:mood==='scared'||mood==='dizzy'?[1.5,1.5]:[1,1];
+    eyes.forEach(e=>e.scale.set(es[0],es[1],1));
+    // 그림자
+    shadow.position.copy(sc(T.x+34,T.y+30,1.5));shadow.visible=mode==='play'||mode==='win';
+    root.updateMatrixWorld(true);
+    // 팔다리 IK: 손발 목표는 2D 좌표 그대로(깊이 보정으로 화면 위치 정확히 일치)
+    limbs.forEach((L,i)=>{
+      const S=L.joint.getWorldPosition(V3(0,0,0)),H=sc(paws[i].x,paws[i].y,mode==='play'?ZP:60),E=ik(S,H,L.total,L.pole);
+      hv[i].copy(H);ev[i].copy(E);
+      aim(L.up,S,E);L.up.updateMatrixWorld(true);aim(L.fore,E,H);L.fore.updateMatrixWorld(true);
+    });
+    GL.render(scene,cam);
+    ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.drawImage(GL.domElement,0,0,cv.width,cv.height);ctx.restore();
+  };
+  // 검증: 3D 손발 중심이 화면에서 2D 홀드 위치와 몇 px 어긋나는지
+  o.check=function(){
+    let m=0;const out=[];
+    limbs.forEach((L,i)=>{
+      const p=L.paw.getWorldPosition(V3(0,0,0)).project(cam),sx=(p.x+1)/2*cw,sy=(1-p.y)/2*ch,h=holdOf(S,C[i]),
+            hx=(h.x+OX)*scale,hy=(h.y-camY)*scale,e=Math.hypot(sx-hx,sy-hy);out.push(+e.toFixed(3));m=Math.max(m,e)});
+    return {max:+m.toFixed(3),each:out};
+  };
+  return o;
+})();
+
+function drawBear(t){
+  const now=performance.now(),va=visAmp(),newHold=FX.hold&&mode==='play';
+  const j=newHold?0:va*7,jx=()=>(Math.random()-.5)*j,shake=now-shakeT<300?(Math.random()-.5)*14:0; // ③ 끔 = 기존 무작위 떨림(손발 포함)
+  const T={x:torso.x+jx()+shake,y:torso.y+jx()};
+  // 떨림: 몸통에만, 사인 합성(무작위 아님)으로 짧고 귀엽게
+  const tr=fx.hold,trx=(Math.sin(t*57)*.6+Math.sin(t*38+1)*.4)*2.8*tr,trY=(Math.sin(t*49+2)*.6+Math.sin(t*31)*.4)*1.8*tr,trR=Math.sin(t*44)*.014*tr;
+  let paws=[0,1,2,3].map(i=>{const p=pawPos(i);
+    if(drag&&drag.limb===i){
+      if(FX.dangle&&fx.foot&&fx.foot.i===i&&mode==='play')return {x:fx.foot.x,y:fx.foot.y};
+      return newHold?{x:p.x+trx*1.2,y:p.y+trY*1.2}:{x:p.x+jx()*1.4,y:p.y+jx()*1.4};
+    }
+    return newHold?{x:p.x,y:p.y}:{x:p.x+jx()*.3,y:p.y+jx()*.3}}); // 접촉한 손발은 홀드 위치 그대로
+  if(mode==='fall'||mode==='down'){const w=Math.sin(fallSpin*2);paws=[0,1,2,3].map(i=>{const a=anchor(T,i),up=i<2?-1:1,sd=(i%2?1:-1);return mode==='down'?{x:a.x+sd*(i<2?80:60),y:a.y+(i<2?40:120)}:{x:a.x+sd*(90+w*30),y:a.y+up*(120+Math.cos(fallSpin*3+i)*40)}})}
+  if(mode==='win'){const k=(now-winT)/1000;const wi=C[0]===S.goal?1:0;const a=anchor(T,wi);paws[wi]={x:a.x+(wi?1:-1)*(120+Math.sin(k*10)*30),y:a.y-150}}
+  // 몸통 프레임: 엉덩이 중심(몸통 중심 아래 48)을 축으로 회전·이동. 몸통 이미지·어깨·엉덩이·머리가 같은 프레임을 씀(🔗)
+  const oldTilt=drag?Math.max(-.22,Math.min(.22,(drag.paw.x-T.x)/600)):0;
+  const R=(FX.reach?0:oldTilt)+fx.rot+trR+LEAN*.35; // ① 끔 = 기존 기울기
+  const P={x:T.x+fx.sx+trx+LEAN*20,y:T.y+fx.sy+fx.dip+trY},HIP=48,cR=Math.cos(R),sR=Math.sin(R);
+  const bp=(ox,oy)=>FX.link?{x:P.x+ox*cR-(oy-HIP)*sR,y:P.y+HIP+ox*sR+(oy-HIP)*cR}:{x:P.x+ox,y:P.y+oy};
+  const A=[0,1,2,3].map(i=>{const q=bp(BEAR.off[i][0],BEAR.off[i][1]);
+    if(i<2)return {x:q.x+fx.lead[i].x,y:q.y+fx.lead[i].y};
+    return {x:q.x-fx.sx*.6,y:q.y}}); // 엉덩이는 상체 이동의 반대로 살짝 버팀
+  const BC=mode==='play'?bp(0,0):T,BR=mode==='play'?R:oldTilt;
+  // 팔다리 뒤(다리) → 몸통 → 팔 → 머리
+  ctx.save();
+  if(mode==='fall'){ctx.translate(T.x,T.y);ctx.rotate(Math.sin(fallSpin)*.5);ctx.translate(-T.x,-T.y)}
+  const mood=mode==='fall'?'scared':mode==='down'?'dizzy':mode==='win'||now-happyT<450?'happy':va>.3||(drag&&drag.over>.9)?'effort':stamina<30?'tired':'calm';
+  const use3=B3.ok&&FX.render!=='2d';
+  if(use3&&FX.render==='3d'){B3.draw({T,P,R,paws,mood,t,tr});ctx.restore();return}
+  if(use3)ctx.globalAlpha=.4; // 겹쳐 보기: 2D는 반투명
+  const anc=i=>mode==='play'?A[i]:anchor(T,i);
+  const drawLeg=(i,bend)=>USE_IK_ART?limbIK(anc(i),paws[i],BEAR.len[i],bend,i,BC):limb(anc(i),paws[i],BEAR.len[i],bend,30,i);
+  const drawArm=(i,bend)=>USE_IK_ART?limbIK(anc(i),paws[i],BEAR.len[i],bend,i,BC):limb(anc(i),paws[i],BEAR.len[i],bend,26,i);
+  // 다리 (뒤)
+  drawLeg(2,1);drawLeg(3,-1);
+  if(USE_BACK34&&BACK.bear_body_back.complete&&BACK.bear_body_back.naturalWidth){
+    // ===== 후면 3/4 시점 (임시 PNG) =====
+    const BS=1.14,bw=512*BS;
+    ctx.save();ctx.translate(BC.x,BC.y);ctx.rotate(BR);ctx.drawImage(BACK.bear_body_back,-256*BS,-256*BS,bw,bw);ctx.restore();
+    // 팔 IK (양손 가까우면 레이어 정리)
+    if(Math.abs(paws[0].x-paws[1].x)<80 && paws[0].y<paws[1].y){drawArm(0,-1);drawArm(1,1)}
+    else if(Math.abs(paws[0].x-paws[1].x)<80){drawArm(1,1);drawArm(0,-1)}
+    else{drawArm(0,-1);drawArm(1,1)}
+    // 머리: renderOffset[0,-101]. 🔗이면 몸통 프레임에 붙임 + ③ 갸웃·까딱
+    const HS=BS,hsz=512*HS;
+    let head=BACK.bear_head_back;
+    const turning=Math.abs(BR)>0.04||mood==='effort'||mood==='tired'||mood==='happy';
+    if(mood==='effort'||mood==='tired'){head=BACK.bear_head_turn_L_strain}
+    else if(turning){head=(BR>0?BACK.bear_head_turn_R:BACK.bear_head_turn_L)}
+    if(!head||!head.complete||!head.naturalWidth)head=BACK.bear_head_back;
+    const nod=Math.sin(t*2.3)*.04*tr+Math.sin(t*61)*.01*tr;
+    if(FX.link&&mode==='play'){const N=bp(0,-101*BS);ctx.save();ctx.translate(N.x,N.y);ctx.rotate(R*.6+fx.head+nod)}
+    else{ctx.save();ctx.translate(T.x+oldTilt*26,T.y-101*BS);ctx.rotate(oldTilt*0.6+(mode==='play'?fx.head+nod:0))}
+    ctx.drawImage(head,-256*HS,-256*HS,hsz,hsz);ctx.restore();
+    ctx.globalAlpha=1;if(use3)B3.draw({T,P,R,paws,mood,t,tr});
+    ctx.restore(); // drawBear 최상단 save 닫음
+    return;
+  }
+  if(false){ // (구 정면 몸통 분기 제거됨 — 후면 3/4가 기본)
+    const BS=1.14,bw=512*BS,tilt=0;
+    drawArm(0,-1);drawArm(1,1);
+    ctx.restore();return;
+  }
+  ctx.fillStyle=LINE;ctx.beginPath();ctx.ellipse(T.x,T.y,60,72,0,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.ellipse(T.x,T.y,55,67,0,0,7);ctx.fill();
+  ctx.fillStyle=BELLY;ctx.beginPath();ctx.ellipse(T.x,T.y+8,36,46,0,0,7);ctx.fill();
+  ctx.fillStyle=HARN;ctx.fillRect(T.x-56,T.y+30,112,16);ctx.fillStyle='#2b5a96';ctx.fillRect(T.x-9,T.y+27,18,22);
+  ctx.fillStyle='#fdfaf2';ctx.strokeStyle=LINE;ctx.lineWidth=4;ctx.beginPath();ctx.roundRect?ctx.roundRect(T.x+30,T.y+36,28,30,8):ctx.rect(T.x+30,T.y+36,28,30);ctx.fill();ctx.stroke();
+  limb(anchor(T,0),paws[0],BEAR.len[0],-1,26,0);limb(anchor(T,1),paws[1],BEAR.len[1],1,26,1);
+  // 머리
+  let tilt=0;if(drag)tilt=Math.max(-.25,Math.min(.25,(drag.paw.x-T.x)/600));
+  const H={x:T.x+tilt*40,y:T.y-104};ctx.translate(H.x,H.y);ctx.rotate(tilt);ctx.scale(1.18,1.18);
+  [-1,1].forEach(s=>{ctx.fillStyle=LINE;ctx.beginPath();ctx.arc(s*40,-40,22,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.arc(s*40,-40,18,0,7);ctx.fill();ctx.fillStyle=PAD;ctx.beginPath();ctx.arc(s*40,-40,9,0,7);ctx.fill()});
+  ctx.fillStyle=LINE;ctx.beginPath();ctx.arc(0,0,58,0,7);ctx.fill();ctx.fillStyle=FUR;ctx.beginPath();ctx.arc(0,0,54,0,7);ctx.fill();
+  ctx.fillStyle=BELLY;ctx.beginPath();ctx.ellipse(0,18,27,21,0,0,7);ctx.fill();
+  ctx.fillStyle='rgba(255,130,120,'+(.35+amp*.3)+')';[-1,1].forEach(s=>{ctx.beginPath();ctx.ellipse(s*32,14,10,6,0,0,7);ctx.fill()});
+  ctx.strokeStyle=LINE;ctx.fillStyle=LINE;ctx.lineWidth=5;ctx.lineCap='round';
+  [-1,1].forEach(s=>{const ex=s*19,ey=-6;ctx.beginPath();
+    if(mood==='calm'){ctx.arc(ex,ey,6,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex+2,ey-2,2,0,7);ctx.fill();ctx.fillStyle=LINE}
+    else if(mood==='happy'){ctx.arc(ex,ey+3,7,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
+    else if(mood==='effort'){ctx.moveTo(ex-s*7,ey-6);ctx.lineTo(ex+s*4,ey);ctx.lineTo(ex-s*7,ey+6);ctx.stroke()}
+    else if(mood==='tired'){ctx.moveTo(ex-7,ey+1);ctx.lineTo(ex+7,ey+1);ctx.stroke()}
+    else if(mood==='dizzy'){ctx.moveTo(ex-6,ey-6);ctx.lineTo(ex+6,ey+6);ctx.moveTo(ex+6,ey-6);ctx.lineTo(ex-6,ey+6);ctx.stroke()}
+    else{ctx.fillStyle='#fff';ctx.arc(ex,ey,10,0,7);ctx.fill();ctx.fillStyle=LINE;ctx.beginPath();ctx.arc(ex,ey,3.5,0,7);ctx.fill()}
+  });
+  ctx.beginPath();ctx.ellipse(0,9,8,5.5,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.lineWidth=3.5;
+  if(mood==='happy'){ctx.fillStyle='#8a3b2a';ctx.arc(0,20,10,0,Math.PI);ctx.fill()}
+  else if(mood==='effort'){ctx.moveTo(-10,25);for(let k=-10;k<=10;k+=5)ctx.lineTo(k,25+((k/5)%2?3:-3));ctx.stroke()}
+  else if(mood==='scared'||mood==='dizzy'){ctx.fillStyle='#8a3b2a';ctx.ellipse(0,26,6,8,0,0,7);ctx.fill()}
+  else{ctx.moveTo(-8,21);ctx.quadraticCurveTo(-4,26,0,21);ctx.quadraticCurveTo(4,26,8,21);ctx.stroke()}
+  if(mood==='effort'||mood==='tired'||mood==='scared'){ctx.fillStyle='#7fd3ff';ctx.beginPath();const sy=-34+((now/18)%30);ctx.moveTo(50,sy-10);ctx.quadraticCurveTo(58,sy+4,50,sy+6);ctx.quadraticCurveTo(42,sy+4,50,sy-10);ctx.fill()}
+  ctx.restore();
+}
+function drawDrag(t){
+  if(!drag)return;const a=anchor(torso,drag.limb),L=BEAR.len[drag.limb],o=drag.over;
+  const col=o>1?'229,96,79':o>.88?'242,169,59':'255,255,255';
+  ctx.save();ctx.fillStyle=`rgba(${col},.10)`;ctx.strokeStyle=`rgba(${col},.85)`;ctx.lineWidth=4;ctx.setLineDash([14,12]);ctx.lineDashOffset=-t*40;
+  ctx.beginPath();ctx.arc(a.x,a.y,L,0,7);ctx.fill();ctx.stroke();
+  if(o>1){ctx.setLineDash([4,10]);ctx.strokeStyle='rgba(229,96,79,.8)';ctx.beginPath();ctx.moveTo(drag.paw.x,drag.paw.y);ctx.lineTo(drag.finger.x,drag.finger.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(229,96,79,.8)';ctx.beginPath();ctx.arc(drag.finger.x,drag.finger.y,10,0,7);ctx.fill()}
+  ctx.restore();
+}
+function drawHint(t){
+  if(!hintMove||mode!=='play')return;if(performance.now()-hintT>4500){hintMove=null;return}
+  const p=pawPos(hintMove.limb),h=holdOf(S,hintMove.id),k=(t*1.2)%1;
+  ctx.save();ctx.strokeStyle='rgba(255,207,51,.9)';ctx.lineWidth=6;ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(h.x,h.y);ctx.stroke();ctx.setLineDash([]);
+  ctx.globalAlpha=1-k;ctx.beginPath();ctx.arc(p.x,p.y,24+k*30,0,7);ctx.stroke();
+  ctx.globalAlpha=.6;ctx.fillStyle='#ffd23f';ctx.beginPath();ctx.arc(p.x+(h.x-p.x)*k,p.y+(h.y-p.y)*k,16,0,7);ctx.fill();ctx.restore();
+}
+function drawFootNudge(t){
+  if(taughtFoot!=='pulse'||mode!=='play'||drag)return;
+  [2,3].forEach(i=>{const p=pawPos(i),k=(t*1.4+i*.3)%1;ctx.save();ctx.strokeStyle=`rgba(255,207,51,${1-k})`;ctx.lineWidth=6;ctx.beginPath();ctx.arc(p.x,p.y,26+k*34,0,7);ctx.stroke();ctx.restore()});
+}
+function drawFx(){
+  parts.forEach(p=>{const k=p.t/p.life;ctx.globalAlpha=(1-k)*(p.sq?1:.8);ctx.fillStyle=p.c;if(p.sq){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot+p.t*8);ctx.fillRect(-p.r,-p.r*.6,p.r*2,p.r*1.2);ctx.restore()}else{ctx.beginPath();ctx.arc(p.x,p.y,p.r*(1+k*1.6),0,7);ctx.fill()}});ctx.globalAlpha=1;
+  pops.forEach(p=>{const k=p.t;ctx.globalAlpha=1-k*k;ctx.font=`${30+Math.min(1,k*6)*8}px Jua, sans-serif`;ctx.textAlign='center';ctx.lineWidth=7;ctx.strokeStyle='#5a3420';ctx.strokeText(p.text,p.x,p.y-k*60);ctx.fillStyle=p.c;ctx.fillText(p.text,p.x,p.y-k*60)});ctx.globalAlpha=1;
+}
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000)*(FX.slow?.35:1);last=now;step(dt);
+  const t=now/1000;ctx.setTransform(dpr*scale,0,0,dpr*scale,OX*dpr*scale,-camY*dpr*scale);
+  drawWall();drawScenery();drawHolds(t);drawDrag(t);drawBear(t);drawHint(t);drawFootNudge(t);drawFx();
+  requestAnimationFrame(frame);
+}
+window.addEventListener('resize',resize);
+// 설계 검증기에서 코스 주입받아 단독 플레이
+let injected=null;
+if(location.hash==='#designtest'){
+  window.addEventListener('message',e=>{if(e.data&&e.data.climbersStage){injected=e.data.climbersStage;injected._par=null;STAGES[0]=injected;loadStage(0)}});
+  document.querySelector('.pill.course')&&(document.querySelector('.pill.course').style.pointerEvents='none');
+}
+// 연출 비교 패널
+function fxUI(){document.querySelectorAll('#fxp button[data-k]').forEach(b=>{const k=b.dataset.k;if(k==='r2d'||k==='r3d'||k==='rgh')b.classList.toggle('on',FX.render==={r2d:'2d',r3d:'3d',rgh:'ghost'}[k]);else if(k!=='ab')b.classList.toggle('on',!!FX[k])});try{localStorage.setItem('climbers.fx3d',JSON.stringify(FX))}catch(e){}}
+let fxSaved=null;
+$('fxp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;
+  if(k==='r2d'||k==='r3d'||k==='rgh'){FX.render={r2d:'2d',r3d:'3d',rgh:'ghost'}[k];if(FX.render!=='2d'&&!B3.ok){FX.render='2d';sayBrief('3D를 불러오지 못했어요 (three.js 로딩/WebGL 확인)',2600)}fxUI();return}
+  if(k==='ab'){const keys=['link','reach','dangle','hold'],anyOn=keys.some(q=>FX[q]);
+    if(anyOn){fxSaved=Object.fromEntries(keys.map(q=>[q,FX[q]]));keys.forEach(q=>FX[q]=false);sayBrief('B: 기존 움직임',1400)}
+    else{Object.assign(FX,fxSaved||{link:true,reach:true,dangle:true,hold:true});sayBrief('A: 새 연출',1400)}}
+  else FX[k]=!FX[k];fxUI()});
+$('viewS').oninput=e=>{VIEW.dx=e.target.value/100};$('leanS').oninput=e=>{LEAN=e.target.value/100};
+if(!B3.ok)FX.render='2d';
+$('fxBtn').onclick=()=>{$('fxp').hidden=!$('fxp').hidden};
+fxUI();
+resize();loadStage(0);requestAnimationFrame(frame);
+</script>
