@@ -131,10 +131,21 @@ function solveJoint(a,b,L,i){let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.01;
 // Prefer a natural outward elbow/knee, keep prior bend side only when similarly plausible.
 const score=c=>Math.hypot(c.x-desired.x,c.y-desired.y)+(prev?Math.hypot(c.x-prev.x,c.y-prev.y)*.12:0);
 let best=candidates.sort((x,y)=>score(x)-score(y))[0];if(d>2*L){best={x:(a.x+b.x)/2,y:(a.y+b.y)/2}}return best}
-function fitBody(){const target=pose(stage,contacts,drag,dragP);if(target.ok){poseTarget=target;displayTorso.x+=(target.torso.x-displayTorso.x)*.18;displayTorso.y+=(target.torso.y-displayTorso.y)*.18}cameraY+=(displayTorso.y-90-cameraY)*.045}
+function fitBody(){const target=pose(stage,contacts,drag,dragP);if(target.ok){poseTarget=target;displayTorso.x+=(target.torso.x-displayTorso.x)*.18;displayTorso.y+=(target.torso.y-displayTorso.y)*.18}
+// Keep all occupied hand/foot holds physically reachable during the torso transition.
+// Skip the freely dragged limb, which is displayed at its maximum legal extension.
+const corrected=project(displayTorso,cons(stage,contacts,drag),18);
+if(corrected.ok){displayTorso.x=corrected.x;displayTorso.y=corrected.y}
+cameraY+=(displayTorso.y-90-cameraY)*.045}
 function drawWall(){let t=trans();ctx.fillStyle='#f7e8c8';ctx.fillRect(0,0,t.w,t.h);let polys=[[[0,-350],[360,-280],[270,200],[0,90]],[[360,-280],[700,-300],[700,280],[270,200]],[[0,90],[270,200],[450,700],[0,620]],[[270,200],[700,280],[700,860],[450,700]],[[0,620],[450,700],[240,1450],[0,1450]],[[450,700],[700,860],[700,1450],[240,1450]]],colors=['#d7e6d4','#f1d7b9','#e5d2d4','#c8dfdd','#e9dfc1','#e5d6b9'];polys.forEach((poly,j)=>{ctx.beginPath();poly.forEach(([x,y],k)=>{let p=posWorld(x,y);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});ctx.closePath();ctx.fillStyle=colors[j];ctx.fill()});for(let y=130;y<1550;y+=78)for(let x=40;x<700;x+=83){let p=posWorld(x+Math.sin(y*.14+x)*15,y+Math.sin(x*.2)*14);circle(p.x,p.y,1.6,'#bea689')}ctx.fillStyle='#967d60';ctx.font='bold 12px system-ui';for(let yy=300;yy<1450;yy+=300){let p=posWorld(0,yy);ctx.fillText(Math.round((1500-yy)/300)+'m',5,p.y)} }
 function drawHolds(){const t=trans();let validSet=new Set();if(drag>=0){for(let h of stage.holds){if(canPlace(stage,contacts,drag,h.id).ok)validSet.add(h.id)}} stage.holds.forEach(h=>{let p=posWorld(h.x,h.y);if(p.y< -30||p.y>t.h+30)return;let isFeet=h.type==='chip',r=(isFeet?13:27)*t.s,hover=hoverHold===h.id,valid=validSet.has(h.id),held=contacts.includes(h.id);if(valid){circle(p.x,p.y,r+9,'#c8edcc77');circle(p.x,p.y,r+6,'', '#55a76d',2)}ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.12);ctx.shadowColor='#65431f66';ctx.shadowBlur=4;ctx.shadowOffsetY=4;rounded(-r,-r*.44,2*r,r*.88,r*.4,isFeet?'#a3a7a5':h.type==='crimp'?'#df7b80':'#f4ae30','#8e7256',1.5);ctx.restore();if(hover)circle(p.x,p.y,r+8,'','#ffcb4f',4);if(h.honey){ctx.font='18px system-ui';ctx.fillText('🍯',p.x+12,p.y-8)}if(h.id===stage.goal){ctx.font='20px system-ui';ctx.fillText('🏁',p.x+15,p.y-10)}if(hintMove?.id===h.id){circle(p.x,p.y,r+11,'','#fff64a',3)}})}
-function drawBear(){let t=trans();ctx.save();ctx.translate(0,t.oy);ctx.scale(t.s,t.s);const c=displayTorso,ends=[0,1,2,3].map(i=>getEnd(i));const shoulders=[0,1,2,3].map(i=>({x:c.x+BEAR.off[i][0],y:c.y+BEAR.off[i][1]}));let J=shoulders.map((a,i)=>solveJoint(a,ends[i],BEAR.len[i]/2,i));limbs=J.map((joint,i)=>({joint}));
+function drawBear(){let t=trans();ctx.save();ctx.translate(0,t.oy);ctx.scale(t.s,t.s);const c=displayTorso;const shoulders=[0,1,2,3].map(i=>({x:c.x+BEAR.off[i][0],y:c.y+BEAR.off[i][1]}));
+// Render-only reach cap: a fixed 2-bone limb can NEVER grow to follow a far pointer.
+// We preserve the raw finger position for drop detection; only the drawn paw is capped.
+const ends=shoulders.map((a,i)=>{const p=getEnd(i),dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy),max=BEAR.len[i]-1;
+  if(d<=max)return {x:p.x,y:p.y};const ratio=max/Math.max(0.001,d);return {x:a.x+dx*ratio,y:a.y+dy*ratio};
+});
+let J=shoulders.map((a,i)=>solveJoint(a,ends[i],BEAR.len[i]/2,i));limbs=J.map((joint,i)=>({joint}));
 // Puffy limbs sit behind the rounded bear torso; short visual caps hide the long skeletal geometry.
 for(let i=2;i>=0;i-=2){let j=i;capsule(shoulders[j],J[j],i<2?38:48,'#b8753e','#794725');capsule(J[j],ends[j],i<2?35:42,'#c8874a','#794725')}
 for(let i=3;i>=1;i-=2){capsule(shoulders[i],J[i],i<2?38:48,'#b8753e','#794725');capsule(J[i],ends[i],i<2?35:42,'#c8874a','#794725')}
