@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no"><title>영차영차 — 포즈 연결 실험</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f3dfbd;color:#57341f;font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;overflow:hidden;touch-action:none}.app{height:100dvh;max-width:520px;margin:auto;display:flex;flex-direction:column;background:#f9e8cc;box-shadow:0 0 50px #704b3a44}.top{z-index:3;display:flex;align-items:center;gap:8px;padding:10px 10px 8px;background:#f4d4a9;border-bottom:3px solid #ad7952}.pill{flex:1;border-radius:15px;background:#fff7e8;padding:9px 11px;font-size:13px;font-weight:850;border:2px solid #dec4a5;box-shadow:0 3px #ba9774}.pill small{font-size:10px;color:#967659}.stage{flex:1;position:relative;min-height:0;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}.footer{z-index:2;padding:9px 12px 13px;background:#f5dfb9;border-top:3px solid #d0a772}.message{font-size:13px;font-weight:800;background:#fffaf0;border-radius:12px;padding:10px;min-height:39px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1;border:2px solid #d3a881;border-radius:13px;background:#fff7e7;color:#65402c;font-weight:900;padding:11px 5px;font-size:13px}.actions button.primary{background:#ffe39a}.hint{font-size:11px;color:#946d51;margin-top:8px;text-align:center}</style></head><body><div class="app"><div class="top"><div class="pill">🐻 코스 1<br><small>손발 퍼즐 · V6</small></div><div class="pill" id="moves">🐾 0수</div><div class="pill" id="honey">🍯 0/2</div></div><div class="stage"><canvas id="cv"></canvas></div><div class="footer"><div class="message" id="msg">손이나 발을 끌어서 다음 홀드에 놓아봐!</div><div class="actions"><button id="undo">↶ 되돌리기</button><button id="hint" class="primary">💡 힌트</button><button id="restart">⟳ 처음부터</button></div><div class="hint">기존 reach-core.js 판정 사용 · 포즈 전환 전용 실험</div></div></div><script>
+*{box-sizing:border-box}body{margin:0;background:#f3dfbd;color:#57341f;font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;overflow:hidden;touch-action:none}.app{height:100dvh;max-width:520px;margin:auto;display:flex;flex-direction:column;background:#f9e8cc;box-shadow:0 0 50px #704b3a44}.top{z-index:3;display:flex;align-items:center;gap:8px;padding:10px 10px 8px;background:#f4d4a9;border-bottom:3px solid #ad7952}.pill{flex:1;border-radius:15px;background:#fff7e8;padding:9px 11px;font-size:13px;font-weight:850;border:2px solid #dec4a5;box-shadow:0 3px #ba9774}.pill small{font-size:10px;color:#967659}.stage{flex:1;position:relative;min-height:0;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}.footer{z-index:2;padding:9px 12px 13px;background:#f5dfb9;border-top:3px solid #d0a772}.message{font-size:13px;font-weight:800;background:#fffaf0;border-radius:12px;padding:10px;min-height:39px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1;border:2px solid #d3a881;border-radius:13px;background:#fff7e7;color:#65402c;font-weight:900;padding:11px 5px;font-size:13px}.actions button.primary{background:#ffe39a}.hint{font-size:11px;color:#946d51;margin-top:8px;text-align:center}</style></head><body><div class="app"><div class="top"><div class="pill">🐻 코스 1<br><small>손발 퍼즐 · V7</small></div><div class="pill" id="moves">🐾 0수</div><div class="pill" id="honey">🍯 0/2</div></div><div class="stage"><canvas id="cv"></canvas></div><div class="footer"><div class="message" id="msg">손이나 발을 끌어서 다음 홀드에 놓아봐!</div><div class="actions"><button id="undo">↶ 되돌리기</button><button id="hint" class="primary">💡 힌트</button><button id="restart">⟳ 처음부터</button></div><div class="hint">기존 reach-core.js 판정 사용 · 포즈 전환 전용 실험</div></div></div><script>
 'use strict';
 // 리치 실험 — 손발 지지 시스템 순수 로직 (DOM 없음)
 // 월드 좌표: 폭 700, y는 아래로 증가. 팔다리 길이로 닿는 범위를 계산한다.
@@ -128,10 +128,44 @@ function rounded(x,y,w,h,r,fill,stroke,line=1){ctx.beginPath();ctx.roundRect(x,y
 function circle(x,y,r,fill,stroke='',lw=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
 function capsule(a,b,width,fill,edge){ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width+4;ctx.strokeStyle=edge;ctx.stroke();ctx.lineWidth=width+1;ctx.strokeStyle=fill;ctx.stroke();ctx.lineWidth=Math.max(3,width*.18);ctx.strokeStyle='#f5c89655';ctx.stroke()}
 function getHold(id){return holdOf(stage,id)}function getPoint(i){if(drag===i&&dragP)return dragP;return getHold(contacts[i])}function getEnd(i){let h=getPoint(i);return {x:h.x,y:h.y}}
-function solveJoint(a,b,L,i){let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.01;let clamped=Math.max(.1,Math.min(d,2*L-1));let mx=(a.x+b.x)/2,my=(a.y+b.y)/2,hh=Math.sqrt(Math.max(0,L*L-clamped*clamped/4));let px=-dy/d,py=dx/d;let candidates=[{x:mx+px*hh,y:my+py*hh},{x:mx-px*hh,y:my-py*hh}];let side= i===0?-1:i===1?1:i===2?-1:1;const anchorX=displayTorso.x;let desired={x:mx+side*hh*.7,y:my+(i<2?0:hh*.25)};let prev=limbs[i]?.joint;
-// Prefer a natural outward elbow/knee, keep prior bend side only when similarly plausible.
-const score=c=>Math.hypot(c.x-desired.x,c.y-desired.y)*.58+(prev?Math.hypot(c.x-prev.x,c.y-prev.y)*.42:0);
-let best=candidates.sort((x,y)=>score(x)-score(y))[0];if(d>2*L){best={x:(a.x+b.x)/2,y:(a.y+b.y)/2}}return best}
+// V7: choose anatomical joint bends, favoring continuity without locking bad poses.
+// Bone lengths are unchanged; this influences only the display joint solution.
+const bendMemory=[0,0,0,0];
+function solveJoint(a,b,L,i,otherJoints=[]){
+  const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.001;
+  const d2=Math.min(d,2*L-0.25);
+  const ux=dx/d,uy=dy/d,mx=a.x+ux*d2/2,my=a.y+uy*d2/2;
+  const hh=Math.sqrt(Math.max(0,L*L-d2*d2/4));
+  const px=-uy,py=ux;
+  const cands=[{x:mx+px*hh,y:my+py*hh,side:1},{x:mx-px*hh,y:my-py*hh,side:-1}];
+  const torso=displayTorso, isArm=i<2, outward=i%2===0?-1:1;
+  const previous=limbs[i]?.joint;
+  const score=q=>{
+    // Elbows stay on the outside; knees prefer a lower, outward bend.
+    let v=Math.max(0,-outward*(q.x-a.x))*1.30;
+    if(!isArm) v+=Math.max(0,a.y-q.y)*.90;
+    // Avoid folding the joint into belly or face.
+    const hx=torso.x,hy=torso.y-94;
+    const headDist=Math.hypot(q.x-hx,q.y-hy);
+    if(headDist<80) v+=(80-headDist)*3.1;
+    const belly=Math.hypot((q.x-torso.x)/68,(q.y-torso.y)/82);
+    if(belly<1.22)v+=(1.22-belly)*92;
+    // Discourage both knees or elbows occupying the same region.
+    for(const other of otherJoints){
+      const dist=Math.hypot(q.x-other.x,q.y-other.y);
+      if(dist<42)v+=(42-dist)*1.5;
+    }
+    if(previous)v+=Math.min(90,Math.hypot(q.x-previous.x,q.y-previous.y))*.24;
+    // Hysteresis keeps the joint on its previous side unless the alternative
+    // is noticeably better; near full extension both solutions converge.
+    if(bendMemory[i] && q.side!==bendMemory[i])v+=hh>12?26:5;
+    return v;
+  };
+  const scores=cands.map(score);
+  const index=scores[0]<=scores[1]?0:1;
+  bendMemory[i]=cands[index].side;
+  return cands[index];
+}
 function fitBody(){const target=pose(stage,contacts,drag,dragP);if(target.ok){poseTarget=target;displayTorso.x+=(target.torso.x-displayTorso.x)*.18;displayTorso.y+=(target.torso.y-displayTorso.y)*.18}
 // Keep all occupied hand/foot holds physically reachable during the torso transition.
 // Skip the freely dragged limb, which is displayed at its maximum legal extension.
@@ -147,13 +181,14 @@ function drawBear(){let t=trans();ctx.save();ctx.translate(0,t.oy);ctx.scale(t.s
 const ends=shoulders.map((a,i)=>{const p=getEnd(i),dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy),max=BEAR.len[i]-1;
   if(d<=max)return {x:p.x,y:p.y};const ratio=max/Math.max(0.001,d);return {x:a.x+dx*ratio,y:a.y+dy*ratio};
 });
-let J=shoulders.map((a,i)=>solveJoint(a,ends[i],BEAR.len[i]/2,i));
+let J=[];for(let i=0;i<4;i++)J[i]=solveJoint(shoulders[i],ends[i],BEAR.len[i]/2,i,J.filter((_,j)=>j!==i&&((j<2)===(i<2))));
 // Frame-coherent knee/elbow choice. The bend may ease towards the other solution,
 // but only when that target stays biomechanically reachable (two rigid bones).
 limbs=J.map((joint,i)=>({joint:{x:joint.x,y:joint.y}}));
 // Puffy limb silhouettes remain behind the body; the IK bones retain their fixed lengths.
 for(let i=2;i>=0;i-=2){let j=i;capsule(shoulders[j],J[j],i<2?46:51,'#b8753e','#794725');capsule(J[j],ends[j],i<2?43:46,'#c8874a','#794725')}
 for(let i=3;i>=1;i-=2){capsule(shoulders[i],J[i],i<2?46:51,'#b8753e','#794725');capsule(J[i],ends[i],i<2?43:46,'#c8874a','#794725')}
+for(let i=2;i<4;i++){const e=ends[i];circle(e.x,e.y,20,'#a56539','#744321',3);circle(e.x,e.y+4,10,'#f0c5a0')}
 ctx.save();ctx.translate(c.x,c.y);ctx.rotate(Math.max(-.16,Math.min(.16,(ends[0].x+ends[1].x-2*c.x)/700)));ctx.beginPath();ctx.ellipse(0,6,69,83,0,0,Math.PI*2);ctx.fillStyle='#b97842';ctx.fill();ctx.lineWidth=4;ctx.strokeStyle='#83512e';ctx.stroke();ctx.beginPath();ctx.ellipse(0,6,44,54,0,0,Math.PI*2);ctx.fillStyle='#eed3a5';ctx.fill();rounded(-66,42,132,23,9,'#2d82c2','#225680',3);rounded(-13,40,26,24,5,'#385a65');ctx.restore();
 // Reference-facing face: always legible, with subtle pose-dependent reactions.
 const stretch=Math.max(...ends.map((e,i)=>Math.hypot(e.x-shoulders[i].x,e.y-shoulders[i].y)/BEAR.len[i]));
@@ -172,12 +207,18 @@ ctx.beginPath();ctx.ellipse(0,21,23,18,0,0,Math.PI*2);ctx.fillStyle='#f5dfbc';ct
 ctx.beginPath();if(reaction==='strain'){ctx.ellipse(0,28,5,7,0,0,Math.PI*2);ctx.fillStyle='#592f29';ctx.fill()}else{ctx.arc(0,20,7,0,Math.PI);ctx.strokeStyle='#543324';ctx.lineWidth=2.5;ctx.stroke()}
 if(reaction==='strain'){ctx.fillStyle='#80d6ef';ctx.beginPath();ctx.ellipse(46,5,4,8,-.22,0,Math.PI*2);ctx.fill()}
 ctx.restore();
-for(let i=0;i<4;i++){const e=ends[i];circle(e.x,e.y,i<2?18:20,'#a56539','#744321',3);circle(e.x,e.y+4,i<2?9:10,'#f0c5a0');circle(e.x-8,e.y-9,3,'#f0c5a0');circle(e.x,e.y-12,3,'#f0c5a0');circle(e.x+8,e.y-9,3,'#f0c5a0')}
+function paintPaw(i){const e=ends[i],r=i<2?18:20;
+  circle(e.x,e.y,r,'#a56539','#744321',3);
+  circle(e.x,e.y+4,i<2?9:10,'#f0c5a0');
+  for(let k=-1;k<=1;k++)circle(e.x+k*8,e.y-10+(k===0?-2:1),3,'#f0c5a0');
+}
+for(let i=2;i<4;i++)paintPaw(i);
+for(let i=0;i<2;i++)paintPaw(i);
 ctx.restore()}
 function draw(){time=performance.now();fitBody();ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight);drawWall();drawHolds();drawBear();requestAnimationFrame(draw)}requestAnimationFrame(draw);
 function coords(e){let r=cv.getBoundingClientRect();return worldPos(e.clientX-r.left,e.clientY-r.top)}function nearestLimb(p){let idx=-1,best=50;for(let i=0;i<4;i++){let q=getEnd(i),d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;idx=i}}return idx}function nearestHold(p,threshold=56){let h=null,d=threshold;for(let q of stage.holds){let dd=Math.hypot(p.x-q.x,p.y-q.y);if(dd<d){d=dd;h=q}}return h}
 cv.addEventListener('pointerdown',e=>{if(win)return;let p=coords(e);drag=nearestLimb(p);if(drag<0){msg('손이나 발바닥에서 끌기 시작해봐!');return}dragP=p;cv.setPointerCapture(e.pointerId);msg(['왼손','오른손','왼발','오른발'][drag]+'을 옮겨봐! 초록색은 가능한 홀드야.')});cv.addEventListener('pointermove',e=>{if(drag<0)return;dragP=coords(e);let h=nearestHold(dragP);hoverHold=h?.id||null});
 function finish(e){if(drag<0)return;let p=coords(e),h=nearestHold(p);if(h){let r=canPlace(stage,contacts,drag,h.id);if(r.ok){history.push({contacts:contacts.slice(),moves,honey:[...honey]});contacts=r.next;moves++;if(h.honey&&!honey.has(h.id))honey.add(h.id);$('#moves').textContent='🐾 '+moves+'수';$('#honey').textContent='🍯 '+honey.size+'/'+honeyIds(stage).length;emotion='normal';emotionUntil=performance.now()+420;msg('찰싹! '+(['왼손','오른손','왼발','오른발'][drag])+' 성공!');if(isWin(stage,contacts)){win=true;msg('🎉 완등! '+moves+'수 · 다시 하려면 처음부터')}hintMove=null}else {emotion='strain';emotionUntil=performance.now()+550;msg(r.why==='reach'?'아직 닿지 않아! 발을 먼저 올려볼까?':r.why==='cross'?'몸이 너무 꼬여! 다른 홀드를 잡아봐.':'여기는 지금 잡을 수 없어.')}}else {emotion='strain';emotionUntil=performance.now()+500;msg('홀드 가까이 놓아봐!')} drag=-1;dragP=null;hoverHold=null}
-cv.addEventListener('pointerup',finish);cv.addEventListener('pointercancel',()=>{drag=-1;dragP=null;hoverHold=null});$('#restart').onclick=()=>{contacts=contacts0.slice();history=[];moves=0;honey.clear();win=false;hintMove=null;poseTarget=pose(stage,contacts);displayTorso={...poseTarget.torso};cameraY=1020;$('#moves').textContent='🐾 0수';$('#honey').textContent='🍯 0/'+honeyIds(stage).length;msg('손발 하나씩 드래그! 발을 먼저 올려봐.')};$('#undo').onclick=()=>{let h=history.pop();if(!h)return;contacts=h.contacts;moves=h.moves;honey=new Set(h.honey);win=false;$('#moves').textContent='🐾 '+moves+'수';$('#honey').textContent='🍯 '+honey.size+'/'+honeyIds(stage).length;msg('한 수 되돌렸어.')};$('#hint').onclick=()=>{let r=solve(stage,contacts,[...honey],false);hintMove=r?.path?.[0]||null;msg(hintMove?'💡 '+['왼손','오른손','왼발','오른발'][hintMove.limb]+' → 빛나는 홀드':'현재 상태에서 길이 없어. 되돌려 봐!')};
+cv.addEventListener('pointerup',finish);cv.addEventListener('pointercancel',()=>{drag=-1;dragP=null;hoverHold=null});$('#restart').onclick=()=>{contacts=contacts0.slice();history=[];moves=0;honey.clear();win=false;hintMove=null;poseTarget=pose(stage,contacts);displayTorso={...poseTarget.torso};cameraY=1020;bendMemory.fill(0);limbs=[];$('#moves').textContent='🐾 0수';$('#honey').textContent='🍯 0/'+honeyIds(stage).length;msg('손발 하나씩 드래그! 발을 먼저 올려봐.')};$('#undo').onclick=()=>{let h=history.pop();if(!h)return;contacts=h.contacts;moves=h.moves;honey=new Set(h.honey);win=false;$('#moves').textContent='🐾 '+moves+'수';$('#honey').textContent='🍯 '+honey.size+'/'+honeyIds(stage).length;msg('한 수 되돌렸어.')};$('#hint').onclick=()=>{let r=solve(stage,contacts,[...honey],false);hintMove=r?.path?.[0]||null;msg(hintMove?'💡 '+['왼손','오른손','왼발','오른발'][hintMove.limb]+' → 빛나는 홀드':'현재 상태에서 길이 없어. 되돌려 봐!')};
 })();
 </script></body></html>
