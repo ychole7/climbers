@@ -1,22 +1,15 @@
-영차영차 등반대 — 리셋 V1 / 포즈 연결 검증
+영차영차 등반대 - 시안 곰돌이 첫 적용 (독립 테스트)
 
-실행: reset-pose-test.html (독립 파일, 외부 자산 및 JS 의존성 없음)
-GitHub main 최상위에 새 파일로 추가한 뒤 /reset-pose-test.html 접속.
-기존 index.html 및 pose-link-test.html은 덮어쓰지 않습니다.
+GitHub: ychole7/climbers, main 브랜치
 
-구조:
-- 자유 IK로 포즈를 즉석 생성하지 않고, 기본/오른손/왼발/왼손 4개 포즈를 손으로 설계
-- 곰돌이 몸통, 머리, 손발 접점 및 관절의 전체 좌표를 포즈마다 저장
-- 포즈 전체를 보간하므로 손발만 홀로 튀는 증상 완화
-- PROFILE과 POSES를 분리하여 향후 다른 동물도 같은 시스템 재사용 가능
+1. bear-art-test.html 파일 하나만 GitHub 저장소 최상위(root)에 업로드하세요.
+2. 이미 업로드되어 있는 아래 3개 PNG를 경로 그대로 사용합니다.
+   assets/characters/bear/poses/bear_pose_01_hang.png
+   assets/characters/bear/poses/bear_pose_02_reach.png
+   assets/characters/bear/poses/bear_pose_03_step.png
+3. 배포 후 접속 주소: https://climbers-orcin.vercel.app/bear-art-test.html
+4. 하단의 3개 버튼으로 기본 매달림/손 뻗기/발 올리기 포즈를 비교합니다.
 
-테스트 시 확인할 사항:
-1. 첫 화면의 짧고 통통한 실루엣이 기존보다 좋은가?
-2. 오른손 뻗기 → 발 올리기 → 왼손 뻗기 전환이 부자연스럽지 않은가?
-3. 각 접점이 홀드에 잘 맞는가?
-
-중요한 범위 제한:
-- 이번 판은 '포즈 방식이 시안과 어울리는가'를 보는 기술 데모입니다.
-- 아직 자유롭게 홀드를 선택/드래그하는 완성 게임이 아닙니다.
-- 캐릭터 그림은 기존 시안 PNG가 아닌 코드 렌더링 임시 그래픽입니다.
-- 포즈 승인 후 홀드 선택/실시간 접점 보정/레벨 검증을 붙입니다.
+주의: 3장의 통짜 투명 PNG를 교체 표시하는 첫 비주얼 통합 테스트입니다.
+손발 접점을 따라 움직이는 IK, 관절 리깅, 코스 판정, 실제 등반 게임은 구현되지 않았습니다.
+기존 index.html, pose-link-test.html 등은 변경하지 않습니다.
