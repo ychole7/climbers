@@ -1,0 +1,299 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no"><title>영차영차 — 포즈 연결 실험</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f3dfbd;color:#57341f;font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;overflow:hidden;touch-action:none}.app{height:100dvh;max-width:520px;margin:auto;display:flex;flex-direction:column;background:#f9e8cc;box-shadow:0 0 50px #704b3a44}.top{z-index:3;display:flex;align-items:center;gap:8px;padding:10px 10px 8px;background:#f4d4a9;border-bottom:3px solid #ad7952}.pill{flex:1;border-radius:15px;background:#fff7e8;padding:9px 11px;font-size:13px;font-weight:850;border:2px solid #dec4a5;box-shadow:0 3px #ba9774}.pill small{font-size:10px;color:#967659}.stage{flex:1;position:relative;min-height:0;overflow:hidden}canvas{width:100%;height:100%;display:block;touch-action:none}.footer{z-index:2;padding:9px 12px 13px;background:#f5dfb9;border-top:3px solid #d0a772}.message{font-size:13px;font-weight:800;background:#fffaf0;border-radius:12px;padding:10px;min-height:39px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1;border:2px solid #d3a881;border-radius:13px;background:#fff7e7;color:#65402c;font-weight:900;padding:11px 5px;font-size:13px}.actions button.primary{background:#ffe39a}.hint{font-size:11px;color:#946d51;margin-top:8px;text-align:center}</style></head><body><div class="app"><div class="top"><div class="pill">🐻 코스 1<br><small>캐릭터 V9-A</small></div><div class="pill" id="moves">🐾 0수</div><div class="pill" id="honey">🍯 0/2</div></div><div class="stage"><canvas id="cv"></canvas></div><div class="footer"><div class="message" id="msg">손이나 발을 끌어서 다음 홀드에 놓아봐!</div><div class="actions"><button id="undo">↶ 되돌리기</button><button id="hint" class="primary">💡 힌트</button><button id="restart">⟳ 처음부터</button></div><div class="hint">V9-A · 통통한 곰돌이 + 짧은 고정 길이 · 손발 드래그</div></div></div><script>
+'use strict';
+// 리치 실험 — 손발 지지 시스템 순수 로직 (DOM 없음)
+// 월드 좌표: 폭 700, y는 아래로 증가. 팔다리 길이로 닿는 범위를 계산한다.
+const BEAR={
+  len:[170,170,155,155],                       // 왼손, 오른손, 왼발, 오른발
+  off:[[-54,-36],[54,-36],[-35,49],[35,49]],    // 몸통 중심 → 어깨/엉덩이
+  name:['왼손','오른손','왼발','오른발']
+};
+const isHand=i=>i<2;
+const HOLD_RATE={jug:4,pinch:0,crimp:-3,sloper:-2,chip:0};  // 손으로 잡고 있을 때 초당 그립 변화
+const HOLD_NAME={jug:'저그',crimp:'크림프',sloper:'슬로퍼',pinch:'핀치',chip:'발판'};
+
+const STAGE={
+  name:'발판을 찾아라',W:700,H:2300,floor:2240,goal:'G',
+  start:['S1','S2','F1','F2'],
+  holds:[
+    {id:'F1',x:300,y:2120,type:'chip'},{id:'F2',x:410,y:2120,type:'chip'},
+    {id:'F3',x:190,y:2010,type:'chip'},{id:'F4',x:520,y:1990,type:'chip'},
+    {id:'F5',x:360,y:1880,type:'chip',honey:true},
+    {id:'S1',x:290,y:1720,type:'jug'},{id:'S2',x:420,y:1720,type:'jug'},
+    {id:'F6',x:210,y:1590,type:'chip'},{id:'F7',x:540,y:1610,type:'chip'},
+    {id:'B',x:400,y:1490,type:'jug'},
+    {id:'A',x:120,y:1450,type:'crimp',honey:true},
+    {id:'F8',x:330,y:1390,type:'chip'},
+    {id:'X',x:620,y:1330,type:'jug'},
+    {id:'C',x:350,y:1270,type:'sloper'},
+    {id:'F9',x:190,y:1180,type:'chip'},{id:'F10',x:520,y:1170,type:'chip'},
+    {id:'E',x:220,y:1050,type:'crimp'},
+    {id:'D',x:480,y:1020,type:'jug'},
+    {id:'F11',x:370,y:950,type:'chip'},
+    {id:'H',x:280,y:820,type:'pinch'},{id:'I',x:520,y:810,type:'jug'},
+    {id:'F12',x:200,y:720,type:'chip'},{id:'F13',x:560,y:700,type:'chip'},
+    {id:'G',x:380,y:600,type:'jug'}
+  ]
+};
+// V8: shorter bear anatomy needs closer, more intentional hold spacing.
+// Scale holds together so the original choices and honey branches remain.
+STAGE.holds.forEach(h=>{h.x=Math.round(350+(h.x-350)*0.90);h.y=Math.round(2300+(h.y-2300)*0.86)});
+// V9-A: compact hold spacing around the lower-course start, preserving route topology.
+STAGE.holds.forEach(h=>{h.x=Math.round(355+(h.x-355)*0.78);h.y=Math.round(1950+(h.y-1950)*0.78)});
+const holdOf=(s,id)=>s.holds.find(h=>h.id===id);
+
+// 이 접점을 유지할 때 몸통이 있어야 하는 영역(원 + 반평면)
+function cons(s,contacts,skip){
+  const c=[];
+  contacts.forEach((id,i)=>{
+    if(i===skip||!id)return;const h=holdOf(s,id),o=BEAR.off[i];
+    c.push({t:'disc',x:h.x-o[0],y:h.y-o[1],r:BEAR.len[i]});
+    if(isHand(i))c.push({t:'minY',v:h.y-70});   // 손이 몸통보다 너무 아래로 가지 않게
+    else c.push({t:'maxY',v:h.y-60});           // 발은 몸통보다 아래
+  });
+  return c;
+}
+function project(p,c,iters=70){
+  let x=p.x,y=p.y;
+  for(let k=0;k<iters;k++){
+    let moved=false;
+    for(const q of c){
+      if(q.t==='disc'){const dx=x-q.x,dy=y-q.y,d=Math.hypot(dx,dy);if(d>q.r){const r=q.r-.5;x=q.x+dx/d*r;y=q.y+dy/d*r;moved=true}}
+      else if(q.t==='minY'&&y<q.v){y=q.v;moved=true}
+      else if(q.t==='maxY'&&y>q.v){y=q.v;moved=true}
+    }
+    if(!moved)return {x,y,ok:true};
+  }
+  const ok=c.every(q=>q.t==='disc'?Math.hypot(x-q.x,y-q.y)<=q.r+1.5:q.t==='minY'?y>=q.v-1.5:y<=q.v+1.5);
+  return {x,y,ok};
+}
+// 편한 자세: 손은 어깨 위 ~70%, 발은 엉덩이 아래 ~72%
+function pref(s,contacts,skip){
+  let x=0,y=0,n=0;
+  contacts.forEach((id,i)=>{if(i===skip||!id)return;const h=holdOf(s,id),o=BEAR.off[i],L=BEAR.len[i];
+    x+=h.x-o[0];y+=h.y-o[1]+(isHand(i)?.68*L:-.72*L);n++});
+  return {x:x/n,y:y/n};
+}
+function anchor(t,i){return {x:t.x+BEAR.off[i][0],y:t.y+BEAR.off[i][1]}}
+function strainOf(s,contacts,t,skip){
+  let m=0;contacts.forEach((id,i)=>{if(i===skip||!id)return;const h=holdOf(s,id),a=anchor(t,i);m=Math.max(m,Math.hypot(h.x-a.x,h.y-a.y)/BEAR.len[i])});return m;
+}
+// 자세 계산. pull: 드래그 중 손가락 쪽으로 몸을 기울이는 목표점
+function pose(s,contacts,skip=-1,pull=null){
+  const c=cons(s,contacts,skip);let p=pref(s,contacts,skip);
+  if(pull){const a=anchor(p,skip),dx=pull.x-a.x,dy=pull.y-a.y;p={x:p.x+dx*.38,y:p.y+dy*.3}}
+  const r=project(p,c);return {torso:{x:r.x,y:r.y},ok:r.ok,strain:strainOf(s,contacts,r,skip)};
+}
+// 팔다리 i를 hold로 옮길 수 있나? → {ok, why, pose}
+function canPlace(s,contacts,i,id){
+  const h=holdOf(s,id);if(!h)return {ok:false,why:'none'};
+  if(contacts[i]===id)return {ok:false,why:'same'};
+  if(isHand(i)&&h.type==='chip')return {ok:false,why:'chip'};
+  // A hold supports one limb; no two paws can occupy the same small grip.
+  const other=contacts.findIndex((c,j)=>c===id&&j!==i);
+  if(other>=0)return {ok:false,why:'taken'};
+  const next=contacts.slice();next[i]=id;
+  // 왼쪽 팔다리가 오른쪽 팔다리를 크게 넘어가지 않게 (꼬임 방지)
+  const X=k=>holdOf(s,next[k]).x;
+  if(X(0)>X(1)+30||X(2)>X(3)+30)return {ok:false,why:'cross'};
+  const p=pose(s,next);
+  if(!p.ok)return {ok:false,why:'reach'};
+  if(isHand(i)&&h.type==='sloper'&&Math.abs(p.torso.x-h.x)>70)return {ok:false,why:'sloper',pose:p};
+  return {ok:true,pose:p,next};
+}
+const honeyIds=s=>s.holds.filter(h=>h.honey).map(h=>h.id);
+const isWin=(s,contacts)=>contacts[0]===s.goal||contacts[1]===s.goal;
+// BFS 솔버: needHoney면 꿀 전부 모은 완등. 반환 {moves, path:[{limb,id}]}
+function solve(s,contacts,got=[],needHoney=true){
+  const all=honeyIds(s),key=(c,g)=>c.join(',')+'|'+g.slice().sort().join(',');
+  const q=[{c:contacts,g:got,path:[]}],seen=new Set([key(contacts,got)]);
+  const near=(a,b,r)=>Math.hypot(a.x-b.x,a.y-b.y)<r;
+  for(let k=0;k<q.length;k++){
+    const {c,g,path}=q[k];
+    for(let i=0;i<4;i++)for(const h of s.holds){
+      // 빠른 거르기: 다른 팔다리 홀드와 너무 멀면 건너뜀
+      if(!c.every((id,j)=>j===i||near(holdOf(s,id),h,BEAR.len[i]+BEAR.len[j]+140)))continue;
+      const r=canPlace(s,c,i,h.id);if(!r.ok)continue;
+      const ng=h.honey&&!g.includes(h.id)?[...g,h.id]:g,np=[...path,{limb:i,id:h.id}];
+      if(isWin(s,r.next)){if(!needHoney||ng.length===all.length)return {moves:np.length,path:np};continue}
+      const kk=key(r.next,ng);if(seen.has(kk))continue;seen.add(kk);q.push({c:r.next,g:ng,path:np});
+    }
+  }
+  return null;
+}
+if(typeof module!=='undefined')module.exports={BEAR,STAGE,HOLD_RATE,HOLD_NAME,isHand,holdOf,cons,pose,anchor,canPlace,solve,honeyIds,isWin,strainOf};
+
+</script><script>
+(()=>{'use strict';const cv=document.querySelector('#cv'),ctx=cv.getContext('2d'),stage=STAGE;const $=s=>document.querySelector(s);const contacts0=stage.start.slice();let contacts=contacts0.slice(),history=[],moves=0,honey=new Set(),drag=-1,dragP=null,hoverHold=null,hintMove=null,poseTarget=pose(stage,contacts),displayTorso={...poseTarget.torso},cameraY=1420,keys={},limbs=[],time=0,win=false,emotionUntil=0,emotion='normal',motionFrom=null,bodyBob=0;const SCENE_W=700;const nHands=2;cameraY=displayTorso.y-90;
+const holdArt={};for(const type of ['jug','crimp','sloper','pinch','chip']){const img=new Image();img.src='assets/holds/'+(type==='chip'?'footchip':type)+'.png';img.onload=()=>{holdArt[type]=img};}
+window.__v9Test={stage,BEAR,pose,solve,canPlace,getContacts:()=>contacts.slice(),getTorso:()=>({...displayTorso})};
+const msg=s=>{$('#msg').textContent=s};
+function resize(){const dpr=Math.min(2,devicePixelRatio||1),r=cv.getBoundingClientRect();cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}window.addEventListener('resize',resize);resize();
+function trans(){const w=cv.clientWidth,h=cv.clientHeight,scale=w/SCENE_W;return {w,h,s:scale,oy:h*.58-cameraY*scale}}function posWorld(x,y){let t=trans();return {x:x*t.s,y:y*t.s+t.oy}}function worldPos(x,y){let t=trans();return {x:x/t.s,y:(y-t.oy)/t.s}}
+function rounded(x,y,w,h,r,fill,stroke,line=1){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}}
+function circle(x,y,r,fill,stroke='',lw=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+function capsule(a,b,width,fill,edge){ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width+4;ctx.strokeStyle=edge;ctx.stroke();ctx.lineWidth=width+1;ctx.strokeStyle=fill;ctx.stroke();ctx.lineWidth=Math.max(3,width*.18);ctx.strokeStyle='#f5c89655';ctx.stroke()}
+function getHold(id){return holdOf(stage,id)}function getPoint(i){if(drag===i&&dragP)return dragP;return getHold(contacts[i])}function getEnd(i){
+  let h=getPoint(i);
+  if(motionFrom && i===motionFrom.limb && drag<0){
+    const t=Math.min(1,(performance.now()-motionFrom.started)/285);
+    if(t>=1){motionFrom=null;return {x:h.x,y:h.y}}
+    const ease=t*t*(3-2*t);
+    return {x:motionFrom.from.x+(motionFrom.to.x-motionFrom.from.x)*ease,
+            y:motionFrom.from.y+(motionFrom.to.y-motionFrom.from.y)*ease-12*Math.sin(Math.PI*t)};
+  }
+  return {x:h.x,y:h.y};
+}
+// V7: choose anatomical joint bends, favoring continuity without locking bad poses.
+// Bone lengths are unchanged; this influences only the display joint solution.
+const bendMemory=[0,0,0,0];
+function solveJoint(a,b,L,i,otherJoints=[]){
+  const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.001;
+  const d2=Math.min(d,2*L-0.25);
+  const ux=dx/d,uy=dy/d,mx=a.x+ux*d2/2,my=a.y+uy*d2/2;
+  const hh=Math.sqrt(Math.max(0,L*L-d2*d2/4));
+  const px=-uy,py=ux;
+  const cands=[{x:mx+px*hh,y:my+py*hh,side:1},{x:mx-px*hh,y:my-py*hh,side:-1}];
+  const torso=displayTorso, isArm=i<2, outward=i%2===0?-1:1;
+  const previous=limbs[i]?.joint;
+  const score=q=>{
+    // Elbows stay on the outside; knees prefer a lower, outward bend.
+    let v=Math.max(0,-outward*(q.x-a.x))*1.65;
+    if(!isArm) v+=Math.max(0,a.y-q.y)*.90;
+    // Avoid folding the joint into belly or face.
+    const hx=torso.x,hy=torso.y-94;
+    const headDist=Math.hypot(q.x-hx,q.y-hy);
+    if(headDist<80) v+=(80-headDist)*3.1;
+    const belly=Math.hypot((q.x-torso.x)/68,(q.y-torso.y)/82);
+    if(belly<1.30)v+=(1.30-belly)*112;
+    // Discourage both knees or elbows occupying the same region.
+    for(const other of otherJoints){
+      const dist=Math.hypot(q.x-other.x,q.y-other.y);
+      if(dist<42)v+=(42-dist)*1.5;
+    }
+    if(previous)v+=Math.min(90,Math.hypot(q.x-previous.x,q.y-previous.y))*.24;
+    // Hysteresis keeps the joint on its previous side unless the alternative
+    // is noticeably better; near full extension both solutions converge.
+    if(bendMemory[i] && q.side!==bendMemory[i])v+=hh>12?26:5;
+    return v;
+  };
+  const scores=cands.map(score);
+  const index=scores[0]<=scores[1]?0:1;
+  bendMemory[i]=cands[index].side;
+  return cands[index];
+}
+// V8: weight shift with real reach constraints. Only the torso eases;
+// attached paws always stay exactly at the hold coordinates.
+function fitBody(){
+  const target=pose(stage,contacts,drag,dragP);
+  if(target.ok){
+    const footSupport=[2,3].filter(i=>i!==drag).map(i=>holdOf(stage,contacts[i]));
+    const footMid=footSupport.length?footSupport.reduce((a,h)=>a+h.x,0)/footSupport.length:target.torso.x;
+    // A slight shift towards supporting feet improves the feeling of stepping up.
+    const supportBias=Math.max(-23,Math.min(23,(footMid-target.torso.x)*.18));
+    const desired={x:target.torso.x+supportBias,y:target.torso.y};
+    const legal=project(desired,cons(stage,contacts,drag),70);
+    const aim=legal.ok?legal:target.torso;
+    displayTorso.x+=(aim.x-displayTorso.x)*.12;
+    displayTorso.y+=(aim.y-displayTorso.y)*.12;
+  }
+  // Projection after interpolation prevents any planted paw being pulled off a hold.
+  const corrected=project(displayTorso,cons(stage,contacts,drag),70);
+  if(corrected.ok){displayTorso.x=corrected.x;displayTorso.y=corrected.y}
+  cameraY+=(displayTorso.y-90-cameraY)*.055;
+  bodyBob*=.88;
+}
+const wallArt=new Image();wallArt.src='assets/scenery/wall.webp';
+function drawWall(){let t=trans();ctx.fillStyle='#f7e8c8';ctx.fillRect(0,0,t.w,t.h);let polys=[[[0,-350],[360,-280],[270,200],[0,90]],[[360,-280],[700,-300],[700,280],[270,200]],[[0,90],[270,200],[450,700],[0,620]],[[270,200],[700,280],[700,860],[450,700]],[[0,620],[450,700],[240,1450],[0,1450]],[[450,700],[700,860],[700,1450],[240,1450]]],colors=['#d7e6d4','#f1d7b9','#e5d2d4','#c8dfdd','#e9dfc1','#e5d6b9'];polys.forEach((poly,j)=>{ctx.beginPath();poly.forEach(([x,y],k)=>{let p=posWorld(x,y);k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});ctx.closePath();ctx.fillStyle=colors[j];ctx.fill()});for(let y=130;y<1550;y+=78)for(let x=40;x<700;x+=83){let p=posWorld(x+Math.sin(y*.14+x)*15,y+Math.sin(x*.2)*14);circle(p.x,p.y,1.6,'#bea689')}if(wallArt.complete&&wallArt.naturalWidth){ctx.save();ctx.globalAlpha=.23;const tile=520*t.s, offset=((cameraY*t.s)%tile+tile)%tile;for(let y=-tile-offset;y<t.h+tile;y+=tile)for(let x=0;x<t.w+tile;x+=tile){ctx.drawImage(wallArt,x,y,tile,tile)}ctx.restore();}ctx.fillStyle='#967d60';ctx.font='bold 12px system-ui';for(let yy=300;yy<1450;yy+=300){let p=posWorld(0,yy);ctx.fillText(Math.round((1500-yy)/300)+'m',5,p.y)} }
+function drawHolds(){const t=trans();let validSet=new Set();if(drag>=0){for(let h of stage.holds){if(canPlace(stage,contacts,drag,h.id).ok)validSet.add(h.id)}} stage.holds.forEach(h=>{let p=posWorld(h.x,h.y);if(p.y< -30||p.y>t.h+30)return;let isFeet=h.type==='chip',r=(isFeet?19:27)*t.s,hover=hoverHold===h.id,valid=validSet.has(h.id),held=contacts.includes(h.id);if(valid){circle(p.x,p.y,r+12,'#b8f1c988');circle(p.x,p.y,r+7,'', '#309d68',3)}ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.12);ctx.shadowColor='#65431f66';ctx.shadowBlur=4;ctx.shadowOffsetY=4;const art=holdArt[h.type];if(art&&art.naturalWidth){const sz=r*(isFeet?3.0:3.25);ctx.drawImage(art,-sz/2,-sz/2,sz,sz)}else{rounded(-r,-r*.44,2*r,r*.88,r*.4,isFeet?'#8aadb1':h.type==='crimp'?'#df7b80':'#f4ae30','#8e7256',1.5)}ctx.restore();if(held)circle(p.x,p.y,r+4,'','#fff5d0',2);if(hover)circle(p.x,p.y,r+9,'','#ffcb4f',4);if(h.honey){ctx.font='18px system-ui';ctx.fillText('🍯',p.x+12,p.y-8)}if(h.id===stage.goal){ctx.font='20px system-ui';ctx.fillText('🏁',p.x+15,p.y-10)}if(hintMove?.id===h.id){circle(p.x,p.y,r+11,'','#fff64a',3)}})}
+function drawBear(){
+  const t=trans();ctx.save();ctx.translate(0,t.oy);ctx.scale(t.s,t.s);
+  const c=displayTorso;
+  const joints=[0,1,2,3].map(i=>({x:c.x+BEAR.off[i][0],y:c.y+BEAR.off[i][1]}));
+  const ends=joints.map((a,i)=>{
+    const p=getEnd(i),dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy),max=BEAR.len[i]-.8;
+    return d<=max?{x:p.x,y:p.y}:{x:a.x+dx*max/Math.max(1,d),y:a.y+dy*max/Math.max(1,d)};
+  });
+  let elbows=[];
+  for(let i=0;i<4;i++)elbows[i]=solveJoint(joints[i],ends[i],BEAR.len[i]/2,i,
+    elbows.filter((_,j)=>(j<2)===(i<2)));
+  limbs=elbows.map(j=>({joint:{x:j.x,y:j.y}}));
+  const ink='#925b35',fur='#c98a53',highlight='#e6a771';
+  // Draw shoulder/hip joints behind the torso so limbs emerge organically.
+  const puffySegment=(a,b,w,shade)=>{
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=ink;ctx.lineWidth=w+3.5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.strokeStyle=shade;ctx.lineWidth=w;ctx.stroke();
+    ctx.strokeStyle='#ffe0ad55';ctx.lineWidth=Math.max(3,w*.15);
+    ctx.beginPath();ctx.moveTo(a.x-2,a.y-3);ctx.lineTo(b.x-2,b.y-3);ctx.stroke();
+  };
+  // Body silhouette is deliberately large relative to short, soft limbs.
+  for(const i of [3,2,1,0]){
+    const hand=i<2;
+    puffySegment(joints[i],elbows[i],hand?56:64,hand?'#ca8b55':'#bc7949');
+    puffySegment(elbows[i],ends[i],hand?51:57,hand?'#d2935b':'#cd8952');
+    circle(elbows[i].x,elbows[i].y,hand?24:29,hand?'#cf925c':'#c38350');
+  }
+  // Draw lifted feet under the body layer.
+  const paintPaw=(i)=>{
+    const e=ends[i],rad=i<2?21:25;
+    circle(e.x,e.y,rad,'#ba7744','#88532e',2.5);
+    circle(e.x,e.y+5,rad*.46,'#edc39a');
+    for(let k=-1;k<=1;k++)circle(e.x+k*9,e.y-10-(k===0?3:0),3.8,'#edc39a');
+  };
+  for(let i=2;i<4;i++)paintPaw(i);
+  const lean=Math.max(-.20,Math.min(.20,((ends[0].x+ends[1].x)/2-c.x)/240));
+  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(lean);
+  // Round pelvis and plush belly: drawn on top of the limb roots.
+  circle(0,39,54,'#c1844d');
+  const g=ctx.createRadialGradient(-18,-30,12,2,10,110);
+  g.addColorStop(0,'#e6a86f');g.addColorStop(.78,'#c78850');g.addColorStop(1,'#9d633b');
+  ctx.beginPath();ctx.ellipse(0,0,79,91,0,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  ctx.strokeStyle='#9c623b';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.ellipse(-2,1,48,59,0,0,Math.PI*2);ctx.fillStyle='#f4d9ae';ctx.fill();
+  // Harness belt and central buckle stay on body rather than on separate limbs.
+  rounded(-75,40,150,25,11,'#287ec3','#236297',2.5);
+  rounded(-15,38,30,29,6,'#45596a','#2b4653',2);
+  ctx.restore();
+  const stretch=Math.max(...ends.map((e,i)=>Math.hypot(e.x-joints[i].x,e.y-joints[i].y)/BEAR.len[i]));
+  const strained=stretch>.92||(drag>=0&&stretch>.81);
+  const reaction=performance.now()<emotionUntil?emotion:(strained?'strain':'normal');
+  // A friendly frontal face on a subtly tilted torso; clear at mobile scale.
+  const headYaw=Math.max(-.18,Math.min(.18,((ends[0].x+ends[1].x)/2-c.x)/330));
+  const hx=c.x+headYaw*21,hy=c.y-112+Math.sin(time*.002)*.75+bodyBob;
+  ctx.save();ctx.translate(hx,hy);ctx.rotate(lean*.32);
+  for(const x of [-49,49]){
+    circle(x,-44,28,'#ba7844','#946037',2);
+    circle(x,-44,14,'#f0c69b');
+  }
+  const hg=ctx.createRadialGradient(-17,-21,9,0,5,80);
+  hg.addColorStop(0,'#e5a671');hg.addColorStop(.83,'#cc8d56');hg.addColorStop(1,'#a46c40');
+  circle(0,0,67,hg,'#9d643c',2.5);
+  circle(-34,15,11,'#ed9c90');circle(34,15,11,'#ed9c90');
+  ctx.lineCap='round';ctx.lineWidth=4;ctx.strokeStyle='#593c2b';
+  if(reaction==='strain'){
+    ctx.beginPath();ctx.moveTo(-31,-9);ctx.lineTo(-14,-4);ctx.moveTo(14,-4);ctx.lineTo(31,-9);ctx.stroke();
+  }else{
+    circle(-23,-7,7,'#30251d');circle(23,-7,7,'#30251d');
+    circle(-25,-10,2,'#fff');circle(21,-10,2,'#fff');
+  }
+  ctx.beginPath();ctx.ellipse(0,24,26,20,0,0,Math.PI*2);ctx.fillStyle='#f6e2c2';ctx.fill();
+  circle(0,13,5.6,'#3d2b23');
+  ctx.strokeStyle='#61432d';ctx.lineWidth=2.8;
+  if(reaction==='strain'){
+    ctx.beginPath();ctx.ellipse(0,31,6,9,0,0,Math.PI*2);ctx.fillStyle='#673c36';ctx.fill();
+    ctx.beginPath();ctx.ellipse(53,10,4,9,-.25,0,Math.PI*2);ctx.fillStyle='#81d2ed';ctx.fill();
+  }else{
+    ctx.beginPath();ctx.arc(0,21,9,.08,Math.PI-.08);ctx.stroke();
+  }
+  ctx.restore();
+  for(let i=0;i<2;i++)paintPaw(i);
+  ctx.restore();
+}
+function draw(){time=performance.now();fitBody();ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight);drawWall();drawHolds();drawBear();requestAnimationFrame(draw)}requestAnimationFrame(draw);
+function coords(e){let r=cv.getBoundingClientRect();return worldPos(e.clientX-r.left,e.clientY-r.top)}function nearestLimb(p){let idx=-1,best=50;for(let i=0;i<4;i++){let q=getEnd(i),d=Math.hypot(p.x-q.x,p.y-q.y);if(d<best){best=d;idx=i}}return idx}function nearestHold(p,threshold=56){let h=null,d=threshold;for(let q of stage.holds){let dd=Math.hypot(p.x-q.x,p.y-q.y);if(dd<d){d=dd;h=q}}return h}
+cv.addEventListener('pointerdown',e=>{if(win)return;let p=coords(e);drag=nearestLimb(p);if(drag<0){msg('손이나 발바닥에서 끌기 시작해봐!');return}motionFrom=null;dragP=p;cv.setPointerCapture(e.pointerId);msg(['왼손','오른손','왼발','오른발'][drag]+'을 옮겨봐! 초록색은 가능한 홀드야.')});cv.addEventListener('pointermove',e=>{if(drag<0)return;dragP=coords(e);let h=nearestHold(dragP);hoverHold=h?.id||null});
+function finish(e){if(drag<0)return;let p=coords(e),h=nearestHold(p);if(h){let r=canPlace(stage,contacts,drag,h.id);if(r.ok){const oldHold=holdOf(stage,contacts[drag]);motionFrom={limb:drag,from:{x:oldHold.x,y:oldHold.y},to:{x:h.x,y:h.y},started:performance.now()};bodyBob=-5;history.push({contacts:contacts.slice(),moves,honey:[...honey]});contacts=r.next;moves++;if(h.honey&&!honey.has(h.id))honey.add(h.id);$('#moves').textContent='🐾 '+moves+'수';$('#honey').textContent='🍯 '+honey.size+'/'+honeyIds(stage).length;emotion='normal';emotionUntil=performance.now()+420;msg('찰싹! '+(['왼손','오른손','왼발','오른발'][drag])+' 성공!');if(isWin(stage,contacts)){win=true;msg('🎉 완등! '+moves+'수 · 다시 하려면 처음부터')}hintMove=null}else {emotion='strain';emotionUntil=performance.now()+550;msg(r.why==='reach'?'아직 닿지 않아! 발을 먼저 올려볼까?':r.why==='cross'?'몸이 너무 꼬여! 다른 홀드를 잡아봐.':'여기는 지금 잡을 수 없어.')}}else {emotion='strain';emotionUntil=performance.now()+500;msg('홀드 가까이 놓아봐!')} drag=-1;dragP=null;hoverHold=null}
+cv.addEventListener('pointerup',finish);cv.addEventListener('pointercancel',()=>{drag=-1;dragP=null;hoverHold=null});$('#restart').onclick=()=>{contacts=contacts0.slice();history=[];moves=0;honey.clear();win=false;hintMove=null;poseTarget=pose(stage,contacts);displayTorso={...poseTarget.torso};cameraY=displayTorso.y-90;bendMemory.fill(0);limbs=[];motionFrom=null;bodyBob=0;$('#moves').textContent='🐾 0수';$('#honey').textContent='🍯 0/'+honeyIds(stage).length;msg('손발 하나씩 드래그! 발을 먼저 올려봐.')};$('#undo').onclick=()=>{let h=history.pop();if(!h)return;contacts=h.contacts;moves=h.moves;honey=new Set(h.honey);win=false;motionFrom=null;bendMemory.fill(0);$('#moves').textContent='🐾 '+moves+'수';$('#honey').textContent='🍯 '+honey.size+'/'+honeyIds(stage).length;msg('한 수 되돌렸어.')};$('#hint').onclick=()=>{let r=solve(stage,contacts,[...honey],false);hintMove=r?.path?.[0]||null;msg(hintMove?'💡 '+['왼손','오른손','왼발','오른발'][hintMove.limb]+' → 빛나는 홀드':'현재 상태에서 길이 없어. 되돌려 봐!')};
+})();
+</script></body></html>
