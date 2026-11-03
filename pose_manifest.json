@@ -1,0 +1,46 @@
+{
+  "project": "영차영차 등반대",
+  "version": "bear-pose-assets-v1",
+  "source": "existing pose reference sheet",
+  "notes": [
+    "3 full-body poses; these are not separated limbs",
+    "Do not apply free IK or claim hold contacts from these sprites",
+    "For full limb drag gameplay, separate layered head/body/upper+lower arms and legs, then define pivots",
+    "600x600 transparent PNG; aligned canvas, not root motion aligned"
+  ],
+  "poses": [
+    {
+      "id": "bear_pose_01_hang",
+      "file": "bear_pose_01_hang.png",
+      "canvas": [
+        600,
+        600
+      ],
+      "description": "기본 매달림",
+      "kind": "pre-rendered full-body pose",
+      "rigged": false
+    },
+    {
+      "id": "bear_pose_02_reach",
+      "file": "bear_pose_02_reach.png",
+      "canvas": [
+        600,
+        600
+      ],
+      "description": "오른손 뻗기",
+      "kind": "pre-rendered full-body pose",
+      "rigged": false
+    },
+    {
+      "id": "bear_pose_03_step",
+      "file": "bear_pose_03_step.png",
+      "canvas": [
+        600,
+        600
+      ],
+      "description": "발 올리기",
+      "kind": "pre-rendered full-body pose",
+      "rigged": false
+    }
+  ]
+}
