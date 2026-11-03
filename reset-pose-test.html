@@ -1,0 +1,67 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#f8f0db"><title>영차영차 등반대 | 리셋 V1</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f7edda;color:#55402a;font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif}main{max-width:440px;margin:auto;min-height:100svh;display:flex;flex-direction:column;background:#f9f1df;box-shadow:0 0 30px #79604430}header{padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;display:flex;align-items:center;justify-content:space-between}h1{font-size:18px;margin:0}small{font-size:11px;color:#8f7456}.tag{background:#fff8ec;border:1px solid #dec79b;border-radius:18px;padding:5px 10px;font-size:12px;font-weight:700}.stage{position:relative;flex:1;min-height:380px;overflow:hidden;background:#ead8b4;border-block:6px solid #b58c59;box-shadow:inset 0 0 0 7px #e7c79a}canvas{display:block;width:100%;height:100%;touch-action:none}.hint{position:absolute;left:50%;transform:translateX(-50%);top:13px;width:max-content;max-width:90%;background:#fff8e9e8;border:2px solid #d3ad79;padding:8px 12px;border-radius:20px;font-weight:800;font-size:14px;text-align:center;pointer-events:none}.panel{background:#fff7e9;padding:12px 12px calc(env(safe-area-inset-bottom) + 15px);border-top:3px solid #e3c89f}.steps{display:flex;gap:6px;margin-bottom:10px}.step{flex:1;background:#eadbc3;padding:7px 5px;border-radius:11px;text-align:center;font-size:11px;font-weight:700}.step.on{background:#cce9e1;outline:2px solid #70ac9d}.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}button{border:0;background:#f0dfc3;color:#64492c;border-radius:14px;font:800 13px system-ui;padding:12px 5px;cursor:pointer;touch-action:manipulation}button.primary{background:#92bfb2;color:#224a44}button:disabled{opacity:.44;cursor:default}.note{font-size:11px;color:#8a795f;margin:9px 0 0;text-align:center}
+</style></head><body><main><header><div><h1>🐻 영차영차 등반대</h1><small>리셋 V1 · 시안형 포즈 연결 실험</small></div><span class="tag">포즈 <b id="pos">1</b> / 4</span></header><section class="stage"><canvas id="game" aria-label="곰돌이 등반 동작 미리보기"></canvas><div class="hint" id="bubble">두 손으로 버티는 기본 자세</div></section><section class="panel"><div class="steps" id="steps"></div><div class="actions"><button id="back">↶ 이전</button><button id="start" class="primary">처음</button><button id="next" class="primary">다음 동작 →</button><button id="play">▶ 연속</button></div><p class="note">먼저 자세가 귀엽게 연결되는지 검수 · 실제 자유 등반 플레이는 다음 단계</p></section></main>
+<script>
+'use strict';
+// All character-specific dimensions live in one profile. Later animals reuse the same pose animator.
+const PROFILE={name:'bear',headRadius:32,bodyW:49,bodyH:56,limbWidth:22,feet:19,ears:12,blue:'#4e9ebd'};
+// Hand-authored silhouettes and four contact points (lh, rh, lf, rf) in a 360x620 design space.
+// A pose is not the result of unrestricted IK. It is an authored full-body arrangement.
+const POSES=[
+ {name:'기본 매달림',tip:'두 손으로 버티는 기본 자세',torso:[179,364],lean:-.04,head:[177,297],lh:[123,266],rh:[236,267],lf:[147,435],rf:[214,435],el:[107,318,252,318],knee:[138,398,219,396],face:'normal'},
+ {name:'오른손 뻗기',tip:'오른손을 높이! 끙~',torso:[187,354],lean:.10,head:[187,287],lh:[123,266],rh:[268,239],lf:[147,435],rf:[219,419],el:[109,309,237,293],knee:[143,396,222,393],face:'strain'},
+ {name:'왼발 올리기',tip:'발을 먼저 딛고 몸을 끌어올려!',torso:[183,325],lean:-.09,head:[180,258],lh:[123,266],rh:[268,239],lf:[142,365],rf:[219,419],el:[109,286,239,273],knee:[156,362,222,375],face:'strain'},
+ {name:'왼손 뻗기',tip:'발로 버티고 왼손을 위로!',torso:[177,302],lean:-.13,head:[173,234],lh:[112,204],rh:[268,239],lf:[142,365],rf:[219,419],el:[113,261,235,272],knee:[152,345,222,374],face:'relief'}
+];
+const HOLDS=[{x:123,y:266,c:'#f6b860'},{x:236,y:267,c:'#82c5be'},{x:268,y:239,c:'#9cbbd2'},{x:112,y:204,c:'#e4a7bc'},{x:147,y:435,c:'#9b9d9c'},{x:214,y:435,c:'#9b9d9c'},{x:219,y:419,c:'#b3aaa2'},{x:142,y:365,c:'#b3aaa2'},{x:75,y:157,c:'#85bf9a'},{x:300,y:156,c:'#f6b962'},{x:80,y:365,c:'#b6aca3'},{x:283,y:374,c:'#baafa2'}];
+const cvs=document.getElementById('game'),ctx=cvs.getContext('2d'),hint=document.getElementById('bubble');
+let idx=0,from={...POSES[0]},to=POSES[0],animStart=0,animDuration=560,playing=false,playTimer=0;
+const lerp=(a,b,t)=>a+(b-a)*t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function mixPose(a,b,t){let p={};for(const key of Object.keys(b)){if(Array.isArray(b[key]))p[key]=b[key].map((v,i)=>lerp((a[key]||b[key])[i],v,t));else if(typeof b[key]==='number')p[key]=lerp(a[key]??b[key],b[key],t);else p[key]=t<.65?a[key]||b[key]:b[key]}return p}
+function visualPose(now){let t=clamp((now-animStart)/animDuration,0,1),e=t*t*(3-2*t);return mixPose(from,to,e)}
+function choose(n){n=clamp(n,0,POSES.length-1);if(n===idx)return;from=visualPose(performance.now());to=POSES[n];idx=n;animStart=performance.now();hint.textContent=to.tip;document.getElementById('pos').textContent=n+1;document.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle('on',i===n));document.getElementById('back').disabled=n===0;document.getElementById('next').disabled=n===POSES.length-1}
+function resize(){const rect=cvs.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);cvs.width=Math.round(rect.width*dpr);cvs.height=Math.round(rect.height*dpr);ctx.setTransform(cvs.width/360,0,0,cvs.height/620,0,0)}
+function ellipse(x,y,rx,ry,fill,stroke='',line=1){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}}
+function line(a,b,c,width,color){ctx.beginPath();ctx.moveTo(...a);ctx.quadraticCurveTo(...b,...c);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke()}
+function hold(h){ellipse(h.x+3,h.y+6,19,10,'#6a5d4a48');ellipse(h.x,h.y,19,12,h.c,'#937c60',2);ellipse(h.x-5,h.y-4,9,3,'#fff7ef66')}
+function limb(a,j,b,width){line(a,j,b,width+4,'#7a5235');line(a,j,b,width,'#c69768');line(a,j,b,width*.41,'#dfb386')}
+function render(time){ctx.clearRect(0,0,360,620);
+  const gradient=ctx.createLinearGradient(0,0,360,620);gradient.addColorStop(0,'#f3e3c7');gradient.addColorStop(1,'#debe91');ctx.fillStyle=gradient;ctx.fillRect(0,0,360,620);
+  for(let j=0;j<12;j++){ctx.strokeStyle='#b69b7750';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,j*56+10);ctx.lineTo(360,j*56+10);ctx.stroke()}
+  for(let i=0;i<52;i++){const x=(i*73+29)%360,y=(i*91+42)%620;ellipse(x,y,2,2,'#9a856349')}
+  HOLDS.forEach(hold);
+  const p=visualPose(time),[x,y]=p.torso,head=p.head,lean=p.lean;
+  // Foreground face stays legible, while body and pose retain a gentle three-quarter tilt.
+  const shouldL=[x-29,y-31],shouldR=[x+29,y-31],hipL=[x-22,y+25],hipR=[x+22,y+25];
+  const joints=[[p.el[0],p.el[1]],[p.el[2],p.el[3]],[p.knee[0],p.knee[1]],[p.knee[2],p.knee[3]]];
+  const ends=[p.lh,p.rh,p.lf,p.rf];
+  // Draw all limbs behind the body; paws are drawn above it later so contacts stay readable.
+  [2,3].forEach(i=>limb(i===2?hipL:hipR,joints[i],ends[i],PROFILE.limbWidth+4));
+  [0,1].forEach(i=>limb(i===0?shouldL:shouldR,joints[i],ends[i],PROFILE.limbWidth));
+  ctx.save();ctx.translate(x,y);ctx.rotate(lean);
+  ellipse(0,5,PROFILE.bodyW,PROFILE.bodyH,'#bf8e5d','#805535',3);ellipse(0,12,34,36,'#d0a374');
+  line([-22,-27],[0,0],[21,34],8,PROFILE.blue);line([22,-27],[0,0],[-21,34],8,PROFILE.blue);
+  line([-30,34],[0,39],[30,34],9,'#397e9b');ellipse(0,39,6,6,'#e3be73','#8c704a',1);
+  ctx.restore();
+  // Neck and plush face are deliberately on top of limb roots, hiding seams.
+  ellipse(head[0],head[1]-22,PROFILE.headRadius,PROFILE.headRadius,'#c59563','#825938',3);
+  ellipse(head[0]-25,head[1]-46,PROFILE.ears,PROFILE.ears,'#bc8959','#805536',3);
+  ellipse(head[0]+25,head[1]-46,PROFILE.ears,PROFILE.ears,'#bc8959','#805536',3);
+  ellipse(head[0]-25,head[1]-46,6,6,'#dfa994');ellipse(head[0]+25,head[1]-46,6,6,'#dfa994');
+  ellipse(head[0],head[1]-13,19,15,'#eed6b1');
+  const strain=p.face==='strain',relief=p.face==='relief';
+  if(strain){ctx.strokeStyle='#4a352b';ctx.lineWidth=3;for(const sx of [-12,12]){ctx.beginPath();ctx.moveTo(head[0]+sx-5,head[1]-27);ctx.lineTo(head[0]+sx+5,head[1]-23);ctx.stroke()}}
+  else{ellipse(head[0]-12,head[1]-27,3,4,'#382a25');ellipse(head[0]+12,head[1]-27,3,4,'#382a25')}
+  ellipse(head[0],head[1]-16,5,3.6,'#4d3024');
+  ctx.beginPath();ctx.arc(head[0],head[1]-12,relief?8:5,.12,Math.PI-.12);ctx.strokeStyle='#65402b';ctx.lineWidth=2;ctx.stroke();
+  if(strain){ellipse(head[0]+34,head[1]-6,5,8,'#7fc2df','#ffffff',1)}
+  ends.forEach((e,i)=>{ellipse(e[0],e[1],i<2?15:17,i<2?15:17,'#be8b5b','#805434',2);ellipse(e[0],e[1]+3,i<2?8:9,'#ebc4a1');});
+  // Show contact circles, not over the actual paw art.
+  ends.forEach(e=>{ctx.beginPath();ctx.arc(e[0],e[1],22,0,Math.PI*2);ctx.lineWidth=2;ctx.strokeStyle='#3f9f8b7a';ctx.stroke()});
+  requestAnimationFrame(render)
+}
+document.getElementById('steps').innerHTML=POSES.map((p,i)=>`<div class="step ${i===0?'on':''}">${i+1}. ${p.name}</div>`).join('');
+document.getElementById('back').onclick=()=>choose(idx-1);document.getElementById('next').onclick=()=>choose(idx+1);document.getElementById('start').onclick=()=>choose(0);
+document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').textContent=playing?'■ 정지':'▶ 연속';if(!playing){clearInterval(playTimer);return}choose(0);playTimer=setInterval(()=>choose(idx===POSES.length-1?0:idx+1),1100)};
+new ResizeObserver(resize).observe(cvs);document.getElementById('back').disabled=true;resize();requestAnimationFrame(render);
+</script></body></html>
