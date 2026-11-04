@@ -1,12 +1,19 @@
-영차영차 등반대 | 곰돌이 접점 맞춤 V2
+영차영차 등반대 — 오른팔 독립 리깅 테스트
 
-1. bear-art-test.html 1개만 GitHub ychole7/climbers의 main 루트에 덮어쓰기
-2. 기존 자산 assets/characters/bear/poses/*.png 3개는 건드리지 않음
-3. 테스트: https://climbers-orcin.vercel.app/bear-art-test.html
+업로드할 파일 (GitHub ychole7/climbers / main)
+1) test.html                         → 저장소 최상위에 기존 test.html 덮어쓰기
+2) assets/characters/bear/rig/body.png       → 경로 그대로 추가
+3) assets/characters/bear/rig/right_arm.png  → 경로 그대로 추가
 
-변경:
-- 곰돌이 이미지 화면 폭 120% -> 79% (기존 대비 65.8%)
-- 세 포즈별 손발 위치에 홀드를 맞춰 정렬한 정적 비주얼 테스트
-- 기존 메인 index.html, 게임 로직, PNG 무변경
+테스트 주소: https://climbers-orcin.vercel.app/test.html
 
-주의: 포즈별 이미지에 맞춰 홀드를 배치한 정적인 접점 시각화입니다. 자유 손발 드래그, 실제 등반 IK 및 무게중심 계산은 미구현입니다.
+테스트 방법
+- 오른손 주변 ✋ 표시를 누른 채 위쪽 노란 홀드로 드래그
+- 또는 목표 노란 홀드 / '자동 뻗기' 버튼을 터치
+- 왼손과 양발이 움직이지 않는지, 오른팔 관절 경계가 부자연스럽지 않은지 확인
+
+주의 사항
+- 현재는 기존 통짜 PNG에서 오른팔을 추출·마스킹한 임시 단일 회전 파츠입니다.
+- 어깨/팔꿈치 2본 IK, 자유로운 전체 등반, 캐릭터 간 공유 리깅은 아직 구현하지 않았습니다.
+- 기존 index.html 및 pose PNG 자산은 변경하지 않았습니다.
+- 모바일 실기기 QA, 실제 브라우저 렌더링 검증은 완료하지 못했습니다.
