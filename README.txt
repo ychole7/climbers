@@ -1,2 +1,1 @@
-Upload test.html to the root of GitHub repository ychole7/climbers, replacing the existing test.html.
-Test: https://climbers-orcin.vercel.app/test.html
+GitHub ychole7/climbers main: replace root test.html. Keep index.html unchanged.
