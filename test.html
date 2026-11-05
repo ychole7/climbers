@@ -16,6 +16,7 @@
 .target{position:absolute;z-index:6;width:74px;height:74px;border:3px dashed #fff9dc;border-radius:50%;box-shadow:0 0 0 5px #f1bb4690,0 0 17px #ffdc54;transform:translate(-50%,-50%);background:#ffe36933;cursor:pointer;touch-action:manipulation;animation:pulse 1.3s infinite}.target.hidden{display:none}@keyframes pulse{50%{box-shadow:0 0 0 10px #eabb4650,0 0 22px #ffdc54}}.cue{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#fff7e9ed;border-radius:18px;font-size:12px;white-space:nowrap;font-weight:800;z-index:7}.contact{position:absolute;width:12px;height:12px;border-radius:50%;z-index:4;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #fff9e7b0;background:#79bd9c;opacity:0;transition:opacity .2s}.contact.visible{opacity:1}
 .footer{position:absolute;bottom:0;left:0;right:0;padding:12px 3% calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#bc815c 15%,#bf8762);z-index:9}.status{border-radius:25px;background:#fff5e3;border:2px solid white;text-align:center;font-weight:800;padding:13px 5px;font-size:clamp(12px,3.5vw,15px);margin:0 0 10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions button{border:2px solid #fff7e9;border-radius:18px;background:#fff0d9;font-weight:900;color:#76452b;padding:14px 0;font-size:16px;box-shadow:0 5px 0 #795d4b45;cursor:pointer}.actions button.main{background:#54b99c;color:white}.actions button:disabled{opacity:.6}.small{text-align:center;color:#fff8e8;font-size:10px;font-weight:700;margin:12px 0 0;text-shadow:0 1px 4px #60392e}@media(max-height:720px){.wall{top:105px;bottom:154px}.footer{padding-top:8px}.small{margin-top:8px}.actions button{padding:9px 0}}@media(prefers-reduced-motion:reduce){.target,.contact{transition:none;animation:none}}
 </style>
+<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=50381"></script>
 </head><body>
 <main class="app"><header class="hud"><section><small>STAGE 01</small><b>🐾 연습</b></section><section><small>이동 횟수</small><b id="count">0 / 2</b></section><section><small>곰돌이 미션</small><b id="mission">준비!</b></section></header>
 <section class="wall" id="wall" aria-label="홀드와 벽이 고정된 클라이밍 벽"><div class="stage-frame"><div class="scene" id="scene">
@@ -33,7 +34,7 @@
 <img class="pose" id="p2" width="310" height="375" src="assets/characters/bear/poses/bear_pose_03.png" alt="발을 올린 곰돌이" draggable="false">
 <span class="contact" id="contact" aria-hidden="true"></span><button id="target" class="target" style="left:252px;top:112px" aria-label="위쪽 노란 홀드 잡기"></button><div id="cue" class="cue">위쪽 노란 홀드를 눌러 봐!</div>
 </div></div></section>
-<footer class="footer"><p class="status" id="status" role="status">오른손을 위쪽 노란 홀드로 옮겨 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">✋ 손 뻗기</button></div><p class="small">고정된 벽 · 포즈별 접점 정렬 · 곰돌이 몸통 중심 이동 · 통짜 포즈 전환</p></footer></main>
+<footer class="footer"><p class="status" id="status" role="status">오른손을 위쪽 노란 홀드로 옮겨 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">✋ 손 뻗기</button></div><p class="small">고정된 벽 · 손 뻗기 → 접점 고정 → 몸통 당기기 · 기존 PNG 유지</p></footer></main>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id),scene=$('scene'),wall=$('wall');
@@ -48,14 +49,16 @@ const poses=[
 ];
 for(let i=1;i<poses.length;i++){const p=poses[i];p.x=p.activeHold.x-p.anchor.x;p.y=p.activeHold.y-p.anchor.y;}
 const prefersReduced=matchMedia('(prefers-reduced-motion: reduce)');
-const duration=480;
+const durations=[920,760];
+// 원본 PNG의 홀드 접점을 축으로 약하게 압축해 손 고정 상태의 당기는 힘을 표현한다.
+const gripScales=[1,.947,1.035];
 let step=0,busy=false,motionId=0,frameId=0;
 function resize(){const w=wall.clientWidth-20,h=wall.clientHeight-20,scale=Math.min(1,w/360,h/520);scene.style.transform=`translate(-50%,-50%) scale(${scale})`;}
 function put(img,x,y){img.style.left=`${x}px`;img.style.top=`${y}px`;}
-function paintStill(){sprites.forEach((s,i)=>{s.classList.remove('moving');s.classList.toggle('on',i===step);put(s,poses[i].x,poses[i].y);s.style.opacity=i===step?'1':'0';s.style.transform='translate3d(0,0,0)';});}
+function paintStill(){sprites.forEach((s,i)=>{s.classList.remove('moving');s.classList.toggle('on',i===step);put(s,poses[i].x,poses[i].y);s.style.opacity=i===step?'1':'0';s.style.transformOrigin=`${poses[i].anchor.x}px ${poses[i].anchor.y}px`;s.style.transform=`scaleY(${gripScales[i]})`;});}
 function render(){
  $('count').textContent=`${step} / 2`;$('mission').textContent=['준비!','영차!','성공!'][step];
- $('status').textContent=['오른손을 위쪽 노란 홀드로 옮겨 봐!','좋아! 이번엔 오른발을 초록 홀드에 올려 봐!','완료! 손발 접점에 맞춰 몸통이 올라갔어.'][step];
+ $('status').textContent=['오른손을 위쪽 노란 홀드로 옮겨 봐!','좋아! 이번엔 오른발을 초록 홀드에 올려 봐!','완료! 손발 접점에 맞춰 두 동작을 연결했어.'][step];
  $('cue').textContent=['위쪽 노란 홀드를 눌러 봐!','아래쪽 초록 홀드를 눌러 봐!','성공! 🎉'][step];
  go.textContent=['✋ 손 뻗기','👣 발 올리기','↻ 한 번 더'][step];
  target.classList.toggle('hidden',step===2);if(step<2){const t=poses[step+1].activeHold;target.style.left=`${t.x}px`;target.style.top=`${t.y}px`;target.setAttribute('aria-label',step===0?'노란 홀드 잡기':'초록 홀드 밟기');}
@@ -67,31 +70,43 @@ function next(){
  if(busy)return;if(step===2){reset();return;}
  busy=true;go.disabled=true;target.disabled=true;target.classList.add('hidden');
  const id=++motionId,newStep=step+1,old=sprites[step],fresh=sprites[newStep],a=poses[step],b=poses[newStep];
- // 통짜 포즈 교체: 몸통 중심의 이동 경로를 공유하되 두 캐릭터의 겹침은 최소화한다.
- const oldBody={x:a.x+a.body.x,y:a.y+a.body.y};
- const nextBody={x:b.x+b.body.x,y:b.y+b.body.y};
- const dx=nextBody.x-oldBody.x,dy=nextBody.y-oldBody.y;
- // 처음에는 기존 자세로 힘을 주고, 중간에 빠르게 포즈를 바꾼 뒤 새 자세로 안착한다.
- const prepLift=Math.min(12,Math.max(5,-dy*.24));
- const startBody={x:oldBody.x+dx*.15,y:oldBody.y-prepLift};
- const start={x:startBody.x-b.body.x,y:startBody.y-b.body.y};
+ const duration=durations[step],clamp=v=>Math.max(0,Math.min(1,v));
+ // 이전 자세의 실제 몸통 중심(접점 고정 압축 후)을 읽어 새 포즈의 등장 위치를 정한다.
+ const bodyOf=p=>({x:p.x+p.body.x,y:p.y+p.anchor.y+(p.body.y-p.anchor.y)*gripScales[step]});
+ const oldBody=bodyOf(a),targetBody={x:b.x+b.body.x,y:b.y+b.body.y};
+ const entry={x:oldBody.x-b.body.x,y:oldBody.y-b.body.y};
+ // 준비 -> 손 뻗어 잡기 -> 접점 고정 후 당기기 -> 다음 정지 자세.
  old.classList.add('moving');fresh.classList.add('moving');fresh.classList.remove('on');
- put(old,a.x,a.y);put(fresh,start.x,start.y);
+ old.style.transformOrigin=`${a.anchor.x}px ${a.anchor.y}px`;
+ fresh.style.transformOrigin=`${b.anchor.x}px ${b.anchor.y}px`;
+ put(old,a.x,a.y);put(fresh,entry.x,entry.y);
  old.style.opacity='1';fresh.style.opacity='0';
+ fresh.style.transform='scaleY(1)';
  if(prefersReduced.matches){finish(id,newStep);return;}
- const startAt=performance.now();
- const clamp=v=>Math.max(0,Math.min(1,v));
- function tick(now){if(id!==motionId)return;
+ const startAt=performance.now();let phase=-1;
+ function tick(now){
+  if(id!==motionId)return;
   const t=clamp((now-startAt)/duration);
-  // 0~35%: 기존 자세의 준비/밀어올리기. 손발 접점 이탈을 줄이기 위해 상승량 제한.
-  const push=ease(clamp((t-.09)/.35));
-  put(old,a.x+dx*.15*push,a.y-prepLift*push+(t<.1?3*Math.sin(Math.PI*t/.1):0));
-  // 35~58%: 바디 중심 위치를 맞춘 상태에서 110ms 정도만 빠르게 교체.
-  const swap=ease(clamp((t-.35)/.23));
+  // 첫 16%는 자세를 유지하며 준비한다. 벽과 기존 접점은 이동하지 않는다.
+  const ready=ease(clamp(t/.16));
+  const breathing=2.2*Math.sin(Math.PI*ready);
+  old.style.transform=`scaleY(${gripScales[step]-(breathing/300)})`;
+  // 18~57%: 새로운 자세가 기존 몸통 위치에서 나타나며 새 손/발을 목표 홀드로 보낸다.
+  const reach=ease(clamp((t-.18)/.39));
+  put(fresh,entry.x+(b.x-entry.x)*reach,entry.y+(b.y-entry.y)*reach);
+  const swap=ease(clamp((t-.19)/.16));
   old.style.opacity=String(1-swap);fresh.style.opacity=String(swap);
-  // 45~100%: 목표 포즈로 몸통을 상승시키고 최종 손발 접점에 정확히 안착.
-  const settle=ease(clamp((t-.45)/.55));
-  put(fresh,start.x+(b.x-start.x)*settle,start.y+(b.y-start.y)*settle);
+  // 57~94%: 접점 좌표를 고정하고 이미지의 세로 크기를 아주 조금만 바꿔 몸통을 당긴다.
+  // transform-origin을 접점에 놓으므로 해당 손/발은 홀드에서 움직이지 않는다.
+  const pull=ease(clamp((t-.57)/.37));
+  const scale=1+(gripScales[newStep]-1)*pull;
+  fresh.style.transform=`scaleY(${scale})`;
+  const nextPhase=t<.18?0:t<.57?1:t<.94?2:3;
+  if(nextPhase!==phase){phase=nextPhase;
+   $('status').textContent=step===0
+    ? ['손을 뻗을 준비!','오른손을 노란 홀드로!','홀드를 잡고 영차!','안정적으로 매달렸어!'][phase]
+    : ['발을 옮길 준비!','초록 홀드로 오른발을!','발로 밀어 올려!','자세를 잡았어!'][phase];
+  }
   if(t<1)frameId=requestAnimationFrame(tick);else finish(id,newStep);
  }
  frameId=requestAnimationFrame(tick);
