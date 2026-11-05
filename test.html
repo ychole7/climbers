@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>영차영차 등반대 · 곰돌이 원형 복구 테스트</title>
+<title>영차영차 등반대 · 리깅 동작 실증</title>
 <style>
 :root{font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#603a26}*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}body{background:#5e4b3e}
 .app{max-width:480px;margin:auto;height:100dvh;min-height:590px;position:relative;overflow:hidden;background:#c88c5a url('assets/scenery/gym-art.webp') center/cover}
@@ -11,7 +11,7 @@
 .hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:3%;right:3%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;z-index:10}.hud section{min-width:0;background:#fff1daf5;border:2px solid #fffbef;border-bottom:5px solid #dab289;border-radius:17px;text-align:center;padding:8px 1px;box-shadow:0 4px 10px #4d271a40}.hud small{display:block;font-size:clamp(9px,2.8vw,12px);font-weight:800}.hud b{color:#aa641e;font-size:clamp(14px,4.6vw,22px);white-space:nowrap}
 .wall{position:absolute;top:clamp(108px,18%,160px);bottom:clamp(153px,21%,210px);left:4%;right:4%;background:linear-gradient(130deg,#f9e8d7 0 42%,#f3ded4 42% 72%,#e1d8e6 72%);border:10px solid #c29368;border-radius:24px;box-shadow:0 8px 22px #42251b55;overflow:hidden}.wall:before{content:'';position:absolute;inset:0;background-image:radial-gradient(#957d7159 1.35px,transparent 1.75px);background-size:25px 25px;pointer-events:none}.wall:after{content:'';position:absolute;inset:0;background:linear-gradient(36deg,transparent 43%,#d8b9a477 43.2%,transparent 43.5%),linear-gradient(144deg,transparent 52%,#d8b9a477 52.2%,transparent 52.5%);pointer-events:none}.stage-frame{position:absolute;inset:0;overflow:hidden}.scene{position:absolute;left:50%;top:50%;width:360px;height:520px;transform:translate(-50%,-50%) scale(1);transform-origin:center}
 .hold{position:absolute;border-radius:38% 58% 43% 46%;transform:translate(-50%,-50%) rotate(-12deg);box-shadow:inset -6px -8px 7px #0002,inset 3px 4px 7px #fff7,0 7px 5px #5c342344;z-index:1}.hold:after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);background:#414146;border:3px solid #88858b;border-radius:50%}.yellow{background:#f6bb21}.blue{background:#358ad6}.pink{background:#f36e8c}.green{background:#4ab7a1}.purple{background:#ad79de}.grey{background:#a69a97}
-/* 원본 PNG를 자르지 않고 통째로 그려 캐릭터의 실루엣을 보존한다. */
+/* 게임 안에서 직접 그리는 관절형 시범 캐릭터. 기존 PNG는 건드리지 않는다. */
 .bear-skin{position:absolute;inset:0;width:360px;height:520px;z-index:4;pointer-events:none;filter:drop-shadow(0 4px 3px #42251b20)}
 .grip-dot{position:absolute;z-index:7;width:10px;height:10px;background:#ffed9a;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 5px #784b23aa;opacity:0;transition:opacity .15s}.grip-dot.show{opacity:1}.grip-dot.foot{background:#8de4a2;border-color:#fff9df;opacity:1}
 .pull-arrow{position:absolute;left:150px;top:280px;transform:translate(-50%,0);z-index:7;color:#fff9cb;background:#704b37cc;padding:4px 10px;border-radius:20px;font-size:20px;opacity:0;pointer-events:none}
@@ -31,74 +31,129 @@
 <div class="hold purple" style="left:290px;top:46px;width:51px;height:45px"></div>
 <div class="hold yellow" style="left:64px;top:366px;width:56px;height:43px"></div>
 <canvas id="bearCanvas" class="bear-skin" width="720" height="1040" role="img" aria-label="양손으로 홀드를 잡고 체중을 실어 올라가는 곰돌이"></canvas>
-<img id="bearSource" src="assets/characters/bear/poses/bear_pose_01.png" alt="" hidden crossorigin="anonymous">
+
 
 <span class="pull-arrow" id="pullArrow">↑ 영차!</span>
-<div id="cue" class="cue">곰돌이 형태 복구 테스트</div>
+<div id="cue" class="cue">발로 밀고 몸통 올라가기</div>
 </div></div></section>
-<footer class="footer"><p class="status" id="status" role="status">곰돌이 원형을 복구했어. 움직임을 확인해 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 원본 곰돌이 복구 · 관절 마스킹 일시 중단</p></footer></main>
+<footer class="footer"><p class="status" id="status" role="status">오른발로 밀면서 손과 발을 고정하고 올라가 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 새 관절형 곰돌이 실증 · 손발 접점 유지 · 기존 PNG 교체 아님</p></footer></main>
 <script>
-
 (()=>{'use strict';
-const $=id=>document.getElementById(id);
-const wall=$('wall'),scene=$('scene'),source=$('bearSource'),canvas=$('bearCanvas');
-const ctx=canvas.getContext('2d'),go=$('go'),resetButton=$('reset');
-const arrow=$('pullArrow'),cue=$('cue'),status=$('status');
-const clamp=v=>Math.max(0,Math.min(1,v));
-const smooth=v=>{v=clamp(v);return v*v*(3-2*v)};
+const $=id=>document.getElementById(id), wall=$('wall'),scene=$('scene'),canvas=$('bearCanvas');
+const ctx=canvas.getContext('2d'),go=$('go'),arrow=$('pullArrow'),status=$('status'),cue=$('cue');
+const clamp=x=>Math.max(0,Math.min(1,x)),smooth=x=>{x=clamp(x);return x*x*(3-2*x);};
 const phase=(t,a,b)=>smooth((t-a)/(b-a));
-let ready=false,busy=false,done=false,token=0,progress=0;
-// 임시 복구: 현재 원본은 전신 단일 PNG다. 잘라서 회전시키면 머리·몸통이
-// 사라질 수 있으므로 전체를 보존한다. 이 상태에서는 손발의 완전 고정을 주장하지 않는다.
-function render(t){
- progress=t;ctx.clearRect(0,0,360,520);if(!ready)return;
- const brace=phase(t,0,.22),push=phase(t,.25,.75),settle=phase(t,.75,1);
- const dx=3*brace-2*push-1*settle;
- const dy=3*brace-13*push+1*settle;
- const angle=(.012*brace-.009*push-.003*settle);
- const centerX=22+150,centerY=155+180;
- ctx.save();ctx.translate(centerX+dx,centerY+dy);ctx.rotate(angle);
- ctx.drawImage(source,-150,-180,300,360);ctx.restore();
- arrow.style.opacity=t>.27&&t<.80?String(Math.min(1,(t-.27)*8,(.80-t)*9)):'0';
- arrow.style.transform=`translate(-50%,${dy}px)`;
+const point=(x,y)=>({x,y}),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const contacts={lh:point(108,173),rh:point(218,173),lf:point(108,440),rf:point(270,401)};
+let time=0,busy=false,done=false,serial=0;
+function joint(a,b,l1,l2,side){
+ const raw=distance(a,b),d=Math.min(l1+l2-.01,Math.max(Math.abs(l1-l2)+.01,raw));
+ const ux=(b.x-a.x)/(raw||1),uy=(b.y-a.y)/(raw||1);
+ const along=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(0,l1*l1-along*along));
+ return point(a.x+ux*along-uy*h*side,a.y+uy*along+ux*h*side);
+}
+function ellipse(x,y,rx,ry,fill,rot=0,stroke=null){
+ ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
+ if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}
+}
+function fur(x,y,r){const g=ctx.createRadialGradient(x-r*.36,y-r*.48,r*.09,x,y,r*1.3);g.addColorStop(0,'#e9a966');g.addColorStop(.55,'#b66c35');g.addColorStop(1,'#82451f');return g;}
+function limb(a,b,outer,inner,width){
+ // Each bone is a purpose-drawn capsule, never a crop from the full-body PNG.
+ ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width+3;ctx.strokeStyle='#81451e';ctx.stroke();
+ ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width;ctx.strokeStyle=outer;ctx.stroke();
+ ctx.beginPath();ctx.moveTo(a.x-2,a.y-2);ctx.lineTo(b.x-2,b.y-2);ctx.lineWidth=width*.28;ctx.strokeStyle=inner;ctx.globalAlpha=.38;ctx.stroke();ctx.globalAlpha=1;
+}
+function paw(p,foot=false){
+ ctx.save();ctx.translate(p.x,p.y);
+ ellipse(0,0,foot?18:16,foot?16:17,fur(0,0,20),0,'#8e5029');
+ ellipse(0,2,foot?9:8,foot?8:7,'#f1c6a1');
+ for(const x of [-8,0,8])ellipse(x,-8,3,3,'#f1c6a1');
+ ctx.restore();
+}
+function torso(center,tilt){
+ ctx.save();ctx.translate(center.x,center.y);ctx.rotate(tilt);
+ // A designed unified torso sprite, with harness fixed to the torso pivot.
+ ellipse(0,0,54,75,fur(0,-5,75),0,'#915027');
+ ctx.strokeStyle='#2a5680';ctx.lineWidth=13;ctx.lineCap='round';
+ ctx.beginPath();ctx.moveTo(-37,-50);ctx.lineTo(30,47);ctx.moveTo(36,-50);ctx.lineTo(-30,47);ctx.stroke();
+ ctx.strokeStyle='#5bb5e0';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-36,-49);ctx.lineTo(30,46);ctx.moveTo(35,-49);ctx.lineTo(-29,45);ctx.stroke();
+ ctx.strokeStyle='#2c4968';ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(-41,45);ctx.quadraticCurveTo(0,52,42,45);ctx.stroke();
+ ellipse(0,1,14,14,'#f7bc55',0,'#9b6231');ellipse(0,1,8,8,'#f7d894');
+ ellipse(0,62,19,17,fur(0,61,22),0,'#955329');
+ ctx.restore();
+}
+function head(center,angle){
+ ctx.save();ctx.translate(center.x,center.y);ctx.rotate(angle);
+ ellipse(-36,-42,19,21,fur(-36,-42,22),0,'#965b2d');ellipse(36,-43,19,21,fur(36,-43,22),0,'#965b2d');
+ ellipse(-36,-42,8,10,'#bb7447');ellipse(36,-43,8,10,'#bb7447');
+ ellipse(0,0,55,52,fur(0,-7,58),0,'#94552c');
+ // Back 3/4, glimpse of right-side muzzle and one eye, not full front view.
+ ellipse(47,13,17,19,'#d99864',-.25);
+ ellipse(50,1,4,5,'#3b251b');ellipse(60,18,6,4,'#633a2d');
+ ctx.restore();
+}
+function pose(t){
+ const load=phase(t,.02,.24),push=phase(t,.25,.70),pull=phase(t,.51,.88),settle=phase(t,.86,1);
+ const lift=27*push+11*pull-2*settle; // Clear permanent +36px ascent.
+ const sway=10*load+4*push-5*settle;
+ const squat=5*load*(1-push);
+ const cx=165+sway,cy=312-lift+squat;
+ const shoulderL=point(cx-36,cy-39),shoulderR=point(cx+36,cy-39);
+ const hipL=point(cx-28,cy+53),hipR=point(cx+28,cy+53);
+ return {cx,cy,lift,load,push,pull,settle,
+  shoulderL,shoulderR,hipL,hipR,
+  elbowL:joint(shoulderL,contacts.lh,75,75,-1),
+  elbowR:joint(shoulderR,contacts.rh,75,75,1),
+  kneeL:joint(hipL,contacts.lf,77,77,-1),
+  kneeR:joint(hipR,contacts.rf,77,77,1)};
+}
+function draw(t){
+ time=t;ctx.clearRect(0,0,360,520);const p=pose(t);
+ // Legs behind torso; feet anchored to exact hold coordinates.
+ for(const [side,hip,knee,foot] of [['L',p.hipL,p.kneeL,contacts.lf],['R',p.hipR,p.kneeR,contacts.rf]]){
+   limb(hip,knee,'#a9622f','#f5bb7b',33);ellipse(knee.x,knee.y,17,17,fur(knee.x,knee.y,19));
+   limb(knee,foot,'#b8733e','#e7a16e',28);paw(foot,true);
+ }
+ // Arms below torso so shoulder seams remain covered; IK elbows visibly bend.
+ for(const [shoulder,elbow,hand] of [[p.shoulderL,p.elbowL,contacts.lh],[p.shoulderR,p.elbowR,contacts.rh]]){
+   limb(shoulder,elbow,'#b36c37','#f0b079',29);ellipse(elbow.x,elbow.y,15,15,fur(elbow.x,elbow.y,19));
+   limb(elbow,hand,'#b97641','#efb584',25);
+ }
+ torso(point(p.cx,p.cy),-.04*p.load+.035*p.settle);
+ head(point(p.cx+3,p.cy-70),-.035*p.load+.045*p.pull);
+ // Repaint grip paws in front of all other parts, pinned at holds.
+ paw(contacts.lh);paw(contacts.rh);
+ arrow.style.opacity=t>.28&&t<.9?String(Math.min(1,(t-.28)*7,(.9-t)*9)):'0';
+ arrow.style.transform=`translate(-50%,${-p.lift}px)`;
 }
 function resize(){
  const scale=Math.min(1,(wall.clientWidth-20)/360,(wall.clientHeight-20)/520);
  scene.style.transform=`translate(-50%,-50%) scale(${scale})`;
  const ratio=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.round(360*ratio);canvas.height=Math.round(520*ratio);
- ctx.setTransform(ratio,0,0,ratio,0,0);render(progress);
+ ctx.setTransform(ratio,0,0,ratio,0,0);draw(time);
 }
-function labels(){
+function update(){
  $('count').textContent=done?'1 / 1':'0 / 1';
- $('mission').textContent=done?'복구 확인':'매달림';
- go.textContent=done?'↻ 한 번 더':'💪 움직임 확인';
- status.textContent=done?'원본 형태 유지 확인! 손발 고정은 전용 관절 자산이 필요해.':'곰돌이 원형 복구 중 · 이미지가 조각나지 않는지 확인해 봐.';
- cue.textContent=done?'곰돌이 복구 확인':'몸통과 머리가 온전히 보이는지 확인!';
+ $('mission').textContent=done?'등반 성공':'매달림';
+ go.textContent=done?'↻ 한 번 더':'💪 영차! 올라가기';
+ status.textContent=done?'상승 완료! 손발 고정 · 관절 굽힘 · 최종 자세 유지':'오른발에 체중 싣기 → 밀기 → 팔꿈치 굽힘 → 몸통 상승';
+ cue.textContent=done?'한 동작 성공!':'손발 고정! 발로 밀고 영차!';
 }
-function reset(){token++;busy=false;done=false;go.disabled=!ready;progress=0;render(0);labels();}
+function reset(){serial++;busy=false;done=false;go.disabled=false;draw(0);update();}
 function start(){
- if(!ready){status.textContent='곰돌이 이미지 로딩 중이야.';return;}
  if(busy)return;if(done){reset();return;}
- busy=true;go.disabled=true;const own=++token,duration=950;
- if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){render(1);busy=false;done=true;go.disabled=false;labels();return;}
- let began=null;
- function tick(now){
-  if(own!==token)return;
-  if(began===null)began=now;
-  const t=clamp((now-began)/duration);render(t);
-  if(t<1)requestAnimationFrame(tick);
-  else{busy=false;done=true;go.disabled=false;labels();}
- }
+ const id=++serial;busy=true;go.disabled=true;
+ if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){draw(1);busy=false;done=true;go.disabled=false;update();return;}
+ let begun=null;function tick(ts){if(id!==serial)return;if(begun===null)begun=ts;
+ const t=clamp((ts-begun)/1250);draw(t);
+ if(t<1)requestAnimationFrame(tick);else{busy=false;done=true;go.disabled=false;update();}}
  requestAnimationFrame(tick);
 }
-function init(){ready=true;resize();reset();}
-source.addEventListener('load',init);
-source.addEventListener('error',()=>{ready=false;status.textContent='곰돌이 PNG를 불러오지 못했어. assets 경로를 확인해 줘.';go.disabled=true;});
-resetButton.addEventListener('click',reset);go.addEventListener('click',start);
+$('reset').addEventListener('click',reset);go.addEventListener('click',start);
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&busy)reset();});
-resize();labels();go.disabled=true;
-if(source.complete&&source.naturalWidth)init();
+resize();reset();
 })();
 </script></body></html>
