@@ -18,7 +18,6 @@
 .target{position:absolute;z-index:6;width:74px;height:74px;border:3px dashed #fff9dc;border-radius:50%;box-shadow:0 0 0 5px #f1bb4690,0 0 17px #ffdc54;transform:translate(-50%,-50%);background:#ffe36933;cursor:pointer;touch-action:manipulation;animation:pulse 1.3s infinite}.target.hidden{display:none}@keyframes pulse{50%{box-shadow:0 0 0 10px #eabb4650,0 0 22px #ffdc54}}.cue{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#fff7e9ed;border-radius:18px;font-size:12px;white-space:nowrap;font-weight:800;z-index:7}.contact{position:absolute;width:12px;height:12px;border-radius:50%;z-index:4;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #fff9e7b0;background:#79bd9c;opacity:0;transition:opacity .2s}.contact.visible{opacity:1}
 .footer{position:absolute;bottom:0;left:0;right:0;padding:12px 3% calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#bc815c 15%,#bf8762);z-index:9}.status{border-radius:25px;background:#fff5e3;border:2px solid white;text-align:center;font-weight:800;padding:13px 5px;font-size:clamp(12px,3.5vw,15px);margin:0 0 10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions button{border:2px solid #fff7e9;border-radius:18px;background:#fff0d9;font-weight:900;color:#76452b;padding:14px 0;font-size:16px;box-shadow:0 5px 0 #795d4b45;cursor:pointer}.actions button.main{background:#54b99c;color:white}.actions button:disabled{opacity:.6}.small{text-align:center;color:#fff8e8;font-size:10px;font-weight:700;margin:12px 0 0;text-shadow:0 1px 4px #60392e}@media(max-height:720px){.wall{top:105px;bottom:154px}.footer{padding-top:8px}.small{margin-top:8px}.actions button{padding:9px 0}}@media(prefers-reduced-motion:reduce){.target,.contact{transition:none;animation:none}}
 </style>
-<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=58620"></script>
 </head><body>
 <main class="app"><header class="hud"><section><small>STAGE 01</small><b>🐾 연습</b></section><section><small>이동 횟수</small><b id="count">0 / 1</b></section><section><small>곰돌이 미션</small><b id="mission">매달림</b></section></header>
 <section class="wall" id="wall" aria-label="홀드와 벽이 고정된 클라이밍 벽"><div class="stage-frame"><div class="scene" id="scene">
@@ -121,16 +120,16 @@ function drawBodyPart(name,destCenter,sourceCenter,rotation=0){
 function drawAt(name,src,dst){ctx.drawImage(partMasks[name],dst.x-src.x,dst.y-src.y);}
 function render(t){
  progress=t;ctx.clearRect(0,0,360,520);if(!ready)return;
- // 1. 발에 무게 싣기 → 2. 발로 몸 밀기 → 3. 팔을 접어 당기기 → 4. 안정화
- const brace=phase(t,0,.20);
- const legDrive=phase(t,.18,.64);
- const armPull=phase(t,.39,.83);
- const settle=phase(t,.83,1);
- const lift=28*legDrive+16*armPull-2*settle;
- const sway=-7*brace+4*legDrive+3*settle;
- const crouch=3*brace*(1-legDrive);
- const shoulderOffset=V(sway,-lift+crouch);
- const hipOffset=V(sway+2*legDrive,-lift*.88+crouch);
+ // 1. 오른발 쪽으로 체중 이동 → 2. 오른다리로 밀기 → 3. 팔을 접어 당기기 → 4. 살짝 되돌아와 안정화
+ const brace=phase(t,0,.22);
+ const legDrive=phase(t,.20,.62);
+ const armPull=phase(t,.42,.82);
+ const settle=phase(t,.82,1);
+ const lift=22*legDrive+11*armPull-1.5*settle;
+ const rightShift=9*brace+8*legDrive-5*settle;
+ const crouch=4*brace*(1-legDrive);
+ const shoulderOffset=V(rightShift*0.75,-lift+crouch);
+ const hipOffset=V(rightShift,-lift*.8+crouch+1.2*brace);
  const shoulderL=add(globalPoint(art.shoulderL),shoulderOffset);
  const shoulderR=add(globalPoint(art.shoulderR),shoulderOffset);
  const hipL=add(globalPoint(art.hipL),hipOffset);
@@ -138,10 +137,10 @@ function render(t){
  const hands=[anchors.handL,anchors.handR];
  const feet=[anchors.footL,anchors.footR];
  // 손·발은 픽셀 단위로 고정하고, 실제 관절 좌표만 다시 계산한다.
- const elbowL=bend(shoulderL,hands[0],62,58,add(globalPoint(art.elbowL),V(13*armPull,-2*armPull)));
- const elbowR=bend(shoulderR,hands[1],62,58,add(globalPoint(art.elbowR),V(-17*armPull,-2*armPull)));
- const kneeL=bend(hipL,feet[0],69,62,add(globalPoint(art.kneeL),V(-15*legDrive,-10*legDrive)));
- const kneeR=bend(hipR,feet[1],69,62,add(globalPoint(art.kneeR),V(16*legDrive,-9*legDrive)));
+ const elbowL=bend(shoulderL,hands[0],62,58,add(globalPoint(art.elbowL),V(8*armPull-2*brace,-1*armPull)));
+ const elbowR=bend(shoulderR,hands[1],62,58,add(globalPoint(art.elbowR),V(-22*armPull-3*brace,-5*armPull)));
+ const kneeL=bend(hipL,feet[0],69,62,add(globalPoint(art.kneeL),V(-8*legDrive,-14*legDrive)));
+ const kneeR=bend(hipR,feet[1],69,62,add(globalPoint(art.kneeR),V(10*legDrive,-20*legDrive)));
  // 다리를 뒤에, 팔을 위에, 몸통과 머리를 중앙에 그려 이음매를 가린다.
  for(const [side,hip,knee,foot] of [['L',hipL,kneeL,feet[0]],['R',hipR,kneeR,feet[1]]]){
   drawRigid('calf'+side,art['knee'+side],art['foot'+side],knee,foot);
@@ -160,7 +159,7 @@ function render(t){
   drawAt('sole'+side,art['foot'+side],anchors['foot'+side]);
  }
  arrow.style.opacity=(t>.24&&t<.87)?String(Math.min(1,(t-.24)*8,(.87-t)*9)):'0';
- arrow.style.transform=`translate(-50%,${-lift}px)`;
+ arrow.style.transform=`translate(-50%,${-lift*0.9}px)`;
  gripL.classList.toggle('show',t>.03);gripR.classList.toggle('show',t>.03);
 }
 function resize(){
@@ -174,8 +173,8 @@ function labels(){
  $('count').textContent=done?'1 / 1':'0 / 1';
  $('mission').textContent=done?'동작 완료!':'매달림';
  go.textContent=done?'↻ 한 번 더':'💪 영차! 올라가기';
- status.textContent=done?'발을 고정한 채 상승 완료! 손발 접점과 관절을 확인해 봐.':'보라·초록 발판 고정 → 발로 밀기 → 팔꿈치 굽힘 → 가슴 상승';
- cue.textContent=done?'1초 등반 동작 완료!':'양손·양발 고정! 발로 밀고 팔꿈치 접기';
+ status.textContent=done?'오른발 중심 상승 완료! 체중 이동과 관절 궤적을 확인해 봐.':'오른발로 지탱 → 골반 우측 이동 → 밀어 올리기 → 팔꿈치 접기';
+ cue.textContent=done?'동작 완료!':'오른발에 체중 싣고 영차!';
 }
 function reset(){token++;busy=false;done=false;go.disabled=false;progress=0;render(0);labels();}
 function start(){
