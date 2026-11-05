@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>영차영차 등반대 · 발 고정 체중 이동 테스트</title>
+<title>영차영차 등반대 · 곰돌이 원형 복구 테스트</title>
 <style>
 :root{font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#603a26}*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}body{background:#5e4b3e}
 .app{max-width:480px;margin:auto;height:100dvh;min-height:590px;position:relative;overflow:hidden;background:#c88c5a url('assets/scenery/gym-art.webp') center/cover}
@@ -11,7 +11,7 @@
 .hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:3%;right:3%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;z-index:10}.hud section{min-width:0;background:#fff1daf5;border:2px solid #fffbef;border-bottom:5px solid #dab289;border-radius:17px;text-align:center;padding:8px 1px;box-shadow:0 4px 10px #4d271a40}.hud small{display:block;font-size:clamp(9px,2.8vw,12px);font-weight:800}.hud b{color:#aa641e;font-size:clamp(14px,4.6vw,22px);white-space:nowrap}
 .wall{position:absolute;top:clamp(108px,18%,160px);bottom:clamp(153px,21%,210px);left:4%;right:4%;background:linear-gradient(130deg,#f9e8d7 0 42%,#f3ded4 42% 72%,#e1d8e6 72%);border:10px solid #c29368;border-radius:24px;box-shadow:0 8px 22px #42251b55;overflow:hidden}.wall:before{content:'';position:absolute;inset:0;background-image:radial-gradient(#957d7159 1.35px,transparent 1.75px);background-size:25px 25px;pointer-events:none}.wall:after{content:'';position:absolute;inset:0;background:linear-gradient(36deg,transparent 43%,#d8b9a477 43.2%,transparent 43.5%),linear-gradient(144deg,transparent 52%,#d8b9a477 52.2%,transparent 52.5%);pointer-events:none}.stage-frame{position:absolute;inset:0;overflow:hidden}.scene{position:absolute;left:50%;top:50%;width:360px;height:520px;transform:translate(-50%,-50%) scale(1);transform-origin:center}
 .hold{position:absolute;border-radius:38% 58% 43% 46%;transform:translate(-50%,-50%) rotate(-12deg);box-shadow:inset -6px -8px 7px #0002,inset 3px 4px 7px #fff7,0 7px 5px #5c342344;z-index:1}.hold:after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);background:#414146;border:3px solid #88858b;border-radius:50%}.yellow{background:#f6bb21}.blue{background:#358ad6}.pink{background:#f36e8c}.green{background:#4ab7a1}.purple{background:#ad79de}.grey{background:#a69a97}
-/* 기존 곰돌이 PNG를 런타임에 관절 파츠로 마스킹해 회전시킨다. */
+/* 원본 PNG를 자르지 않고 통째로 그려 캐릭터의 실루엣을 보존한다. */
 .bear-skin{position:absolute;inset:0;width:360px;height:520px;z-index:4;pointer-events:none;filter:drop-shadow(0 4px 3px #42251b20)}
 .grip-dot{position:absolute;z-index:7;width:10px;height:10px;background:#ffed9a;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 5px #784b23aa;opacity:0;transition:opacity .15s}.grip-dot.show{opacity:1}.grip-dot.foot{background:#8de4a2;border-color:#fff9df;opacity:1}
 .pull-arrow{position:absolute;left:150px;top:280px;transform:translate(-50%,0);z-index:7;color:#fff9cb;background:#704b37cc;padding:4px 10px;border-radius:20px;font-size:20px;opacity:0;pointer-events:none}
@@ -32,135 +32,35 @@
 <div class="hold yellow" style="left:64px;top:366px;width:56px;height:43px"></div>
 <canvas id="bearCanvas" class="bear-skin" width="720" height="1040" role="img" aria-label="양손으로 홀드를 잡고 체중을 실어 올라가는 곰돌이"></canvas>
 <img id="bearSource" src="assets/characters/bear/poses/bear_pose_01.png" alt="" hidden crossorigin="anonymous">
-<span class="grip-dot" id="gripL" style="left:108px;top:173px"></span><span class="grip-dot" id="gripR" style="left:218px;top:173px"></span><span class="grip-dot foot" style="left:108px;top:440px"></span><span class="grip-dot foot" style="left:270px;top:401px"></span>
+
 <span class="pull-arrow" id="pullArrow">↑ 영차!</span>
-<div id="cue" class="cue">양손을 잡고 몸을 끌어올려!</div>
+<div id="cue" class="cue">곰돌이 형태 복구 테스트</div>
 </div></div></section>
-<footer class="footer"><p class="status" id="status" role="status">양손을 고정하고 체중을 옮기고 발로 밀어 올라가 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 네 접점 고정 · 발 밀기 → 팔 굽힘 → 자세 안정</p></footer></main>
+<footer class="footer"><p class="status" id="status" role="status">곰돌이 원형을 복구했어. 움직임을 확인해 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 원본 곰돌이 복구 · 관절 마스킹 일시 중단</p></footer></main>
 <script>
+
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const wall=$('wall'),scene=$('scene'),source=$('bearSource'),canvas=$('bearCanvas');
 const ctx=canvas.getContext('2d'),go=$('go'),resetButton=$('reset');
-const arrow=$('pullArrow'),cue=$('cue'),status=$('status'),gripL=$('gripL'),gripR=$('gripR');
+const arrow=$('pullArrow'),cue=$('cue'),status=$('status');
 const clamp=v=>Math.max(0,Math.min(1,v));
-const ease=v=>{v=clamp(v);return v*v*(3-2*v)};
-const phase=(t,a,b)=>ease((t-a)/(b-a));
-const mix=(a,b,t)=>a+(b-a)*t;
-const V=(x,y)=>({x,y});
-const add=(a,b)=>V(a.x+b.x,a.y+b.y);
-const sub=(a,b)=>V(a.x-b.x,a.y-b.y);
-const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-let ready=false,busy=false,done=false,token=0,progress=0,lastStamp=0;
-const BASE=V(22,155); // 기존 장면과 동일한 원본 300×360 PNG 배치
-// 실제 PNG의 손끝, 어깨, 엉덩이, 무릎, 발바닥 좌표를 이용한다.
-const art={
- shoulderL:V(113,124),elbowL:V(85,72),handL:V(86,18),
- shoulderR:V(191,124),elbowR:V(201,70),handR:V(196,18),
- hipL:V(124,235),kneeL:V(101,273),footL:V(99,319),
- hipR:V(180,235),kneeR:V(218,277),footR:V(215,328)
-};
-const globalPoint=p=>add(p,BASE);
-// 고정 벽의 실재 홀드 위치. 팔과 다리는 이 좌표를 움직이지 않는다.
-const anchors={handL:V(108,173),handR:V(218,173),footL:V(108,440),footR:V(270,401)};
-const partMasks={};
-// 원본을 관절별로 따로 마스킹한다. 새 PNG나 외부 라이브러리는 필요하지 않다.
-function masked(name,draw){
- const c=document.createElement('canvas');c.width=300;c.height=360;
- const g=c.getContext('2d');g.beginPath();draw(g);g.clip();g.drawImage(source,0,0,300,360);
- partMasks[name]=c;
-}
-function capsule(g,a,b,r1,r2){
- const theta=Math.atan2(b.y-a.y,b.x-a.x),nx=-Math.sin(theta),ny=Math.cos(theta),ux=Math.cos(theta),uy=Math.sin(theta);
- g.moveTo(a.x+nx*r1,a.y+ny*r1);
- g.lineTo(b.x+nx*r2,b.y+ny*r2);
- g.quadraticCurveTo(b.x+ux*r2*1.5,b.y+uy*r2*1.5,b.x-nx*r2,b.y-ny*r2);
- g.lineTo(a.x-nx*r1,a.y-ny*r1);
- g.quadraticCurveTo(a.x-ux*r1*1.5,a.y-uy*r1*1.5,a.x+nx*r1,a.y+ny*r1);
- g.closePath();
-}
-function initParts(){
- masked('body',g=>{g.moveTo(109,96);g.bezierCurveTo(91,116,96,153,95,182);g.lineTo(102,229);g.quadraticCurveTo(110,258,152,263);g.quadraticCurveTo(199,258,209,224);g.lineTo(211,166);g.quadraticCurveTo(212,114,191,96);g.closePath();});
- masked('head',g=>{g.ellipse(153,114,63,66,0,0,Math.PI*2);});
- for(const side of ['L','R']){
-  masked('upperArm'+side,g=>capsule(g,art['shoulder'+side],art['elbow'+side],24,20));
-  masked('lowerArm'+side,g=>capsule(g,art['elbow'+side],art['hand'+side],21,18));
-  masked('thigh'+side,g=>capsule(g,art['hip'+side],art['knee'+side],27,24));
-  masked('calf'+side,g=>capsule(g,art['knee'+side],art['foot'+side],24,20));
- }
- // 손바닥과 발바닥은 고정된 접점에 별도로 그려 마찰감을 유지한다.
- for(const side of ['L','R']){
-  masked('paw'+side,g=>{const p=art['hand'+side];g.ellipse(p.x,p.y,23,26,0,0,Math.PI*2);});
-  masked('sole'+side,g=>{const p=art['foot'+side];g.ellipse(p.x,p.y,26,28,0,0,Math.PI*2);});
- }
-}
-// 고정점 둘 사이의 두 관절 뼈가 풀 수 있는 원의 교차점을 계산한다.
-function bend(a,b,l1,l2,preferred){
- const d0=dist(a,b),d=Math.max(.01,Math.min(d0,l1+l2-.005));
- const ux=(b.x-a.x)/Math.max(.01,d0),uy=(b.y-a.y)/Math.max(.01,d0);
- const along=(l1*l1-l2*l2+d*d)/(2*d),height=Math.sqrt(Math.max(0,l1*l1-along*along));
- const c1=V(a.x+ux*along-uy*height,a.y+uy*along+ux*height);
- const c2=V(a.x+ux*along+uy*height,a.y+uy*along-ux*height);
- return dist(c1,preferred)<dist(c2,preferred)?c1:c2;
-}
-function drawRigid(name,fromSrc,toSrc,fromDest,toDest){
- const dx=toSrc.x-fromSrc.x,dy=toSrc.y-fromSrc.y;
- const targetX=toDest.x-fromDest.x,targetY=toDest.y-fromDest.y;
- const srcAngle=Math.atan2(dy,dx),dstAngle=Math.atan2(targetY,targetX);
- const scale=Math.min(1.16,Math.max(.86,Math.hypot(targetX,targetY)/Math.max(1,Math.hypot(dx,dy))));
- ctx.save();ctx.translate(fromDest.x,fromDest.y);ctx.rotate(dstAngle-srcAngle);
- ctx.translate(-fromSrc.x,-fromSrc.y);
- // 각 파츠는 회전과 소폭의 길이 보정만 적용해 전신 고무 변형을 방지한다.
- if(Math.abs(scale-1)>.001){ctx.translate(fromSrc.x,fromSrc.y);ctx.rotate(srcAngle);ctx.scale(scale,1);ctx.rotate(-srcAngle);ctx.translate(-fromSrc.x,-fromSrc.y);}
- ctx.drawImage(partMasks[name],0,0);ctx.restore();
-}
-function drawBodyPart(name,destCenter,sourceCenter,rotation=0){
- ctx.save();ctx.translate(destCenter.x,destCenter.y);ctx.rotate(rotation);ctx.drawImage(partMasks[name],-sourceCenter.x,-sourceCenter.y);ctx.restore();
-}
-function drawAt(name,src,dst){ctx.drawImage(partMasks[name],dst.x-src.x,dst.y-src.y);}
+const smooth=v=>{v=clamp(v);return v*v*(3-2*v)};
+const phase=(t,a,b)=>smooth((t-a)/(b-a));
+let ready=false,busy=false,done=false,token=0,progress=0;
+// 임시 복구: 현재 원본은 전신 단일 PNG다. 잘라서 회전시키면 머리·몸통이
+// 사라질 수 있으므로 전체를 보존한다. 이 상태에서는 손발의 완전 고정을 주장하지 않는다.
 function render(t){
  progress=t;ctx.clearRect(0,0,360,520);if(!ready)return;
- // 1. 오른발 쪽으로 체중 이동 → 2. 오른다리로 밀기 → 3. 팔을 접어 당기기 → 4. 살짝 되돌아와 안정화
- const brace=phase(t,0,.22);
- const legDrive=phase(t,.20,.62);
- const armPull=phase(t,.42,.82);
- const settle=phase(t,.82,1);
- const lift=22*legDrive+11*armPull-1.5*settle;
- const rightShift=9*brace+8*legDrive-5*settle;
- const crouch=4*brace*(1-legDrive);
- const shoulderOffset=V(rightShift*0.75,-lift+crouch);
- const hipOffset=V(rightShift,-lift*.8+crouch+1.2*brace);
- const shoulderL=add(globalPoint(art.shoulderL),shoulderOffset);
- const shoulderR=add(globalPoint(art.shoulderR),shoulderOffset);
- const hipL=add(globalPoint(art.hipL),hipOffset);
- const hipR=add(globalPoint(art.hipR),hipOffset);
- const hands=[anchors.handL,anchors.handR];
- const feet=[anchors.footL,anchors.footR];
- // 손·발은 픽셀 단위로 고정하고, 실제 관절 좌표만 다시 계산한다.
- const elbowL=bend(shoulderL,hands[0],62,58,add(globalPoint(art.elbowL),V(8*armPull-2*brace,-1*armPull)));
- const elbowR=bend(shoulderR,hands[1],62,58,add(globalPoint(art.elbowR),V(-22*armPull-3*brace,-5*armPull)));
- const kneeL=bend(hipL,feet[0],69,62,add(globalPoint(art.kneeL),V(-8*legDrive,-14*legDrive)));
- const kneeR=bend(hipR,feet[1],69,62,add(globalPoint(art.kneeR),V(10*legDrive,-20*legDrive)));
- // 다리를 뒤에, 팔을 위에, 몸통과 머리를 중앙에 그려 이음매를 가린다.
- for(const [side,hip,knee,foot] of [['L',hipL,kneeL,feet[0]],['R',hipR,kneeR,feet[1]]]){
-  drawRigid('calf'+side,art['knee'+side],art['foot'+side],knee,foot);
-  drawRigid('thigh'+side,art['hip'+side],art['knee'+side],hip,knee);
- }
- for(const [side,shoulder,elbow,hand] of [['L',shoulderL,elbowL,hands[0]],['R',shoulderR,elbowR,hands[1]]]){
-  drawRigid('lowerArm'+side,art['elbow'+side],art['hand'+side],elbow,hand);
-  drawRigid('upperArm'+side,art['shoulder'+side],art['elbow'+side],shoulder,elbow);
- }
- const bodyOffset=V((shoulderOffset.x+hipOffset.x)/2,(shoulderOffset.y+hipOffset.y)/2);
- drawBodyPart('body',add(globalPoint(V(151,187)),bodyOffset),V(151,187),sway*.0016);
- drawBodyPart('head',add(globalPoint(V(153,114)),add(shoulderOffset,V(0,-2*armPull))),V(153,114),-.024*brace+.022*armPull);
- // 손바닥과 발바닥은 언제나 홀드 접점에 붙인 마지막 레이어.
- for(const side of ['L','R']){
-  drawAt('paw'+side,art['hand'+side],anchors['hand'+side]);
-  drawAt('sole'+side,art['foot'+side],anchors['foot'+side]);
- }
- arrow.style.opacity=(t>.24&&t<.87)?String(Math.min(1,(t-.24)*8,(.87-t)*9)):'0';
- arrow.style.transform=`translate(-50%,${-lift*0.9}px)`;
- gripL.classList.toggle('show',t>.03);gripR.classList.toggle('show',t>.03);
+ const brace=phase(t,0,.22),push=phase(t,.25,.75),settle=phase(t,.75,1);
+ const dx=3*brace-2*push-1*settle;
+ const dy=3*brace-13*push+1*settle;
+ const angle=(.012*brace-.009*push-.003*settle);
+ const centerX=22+150,centerY=155+180;
+ ctx.save();ctx.translate(centerX+dx,centerY+dy);ctx.rotate(angle);
+ ctx.drawImage(source,-150,-180,300,360);ctx.restore();
+ arrow.style.opacity=t>.27&&t<.80?String(Math.min(1,(t-.27)*8,(.80-t)*9)):'0';
+ arrow.style.transform=`translate(-50%,${dy}px)`;
 }
 function resize(){
  const scale=Math.min(1,(wall.clientWidth-20)/360,(wall.clientHeight-20)/520);
@@ -171,34 +71,34 @@ function resize(){
 }
 function labels(){
  $('count').textContent=done?'1 / 1':'0 / 1';
- $('mission').textContent=done?'동작 완료!':'매달림';
- go.textContent=done?'↻ 한 번 더':'💪 영차! 올라가기';
- status.textContent=done?'오른발 중심 상승 완료! 체중 이동과 관절 궤적을 확인해 봐.':'오른발로 지탱 → 골반 우측 이동 → 밀어 올리기 → 팔꿈치 접기';
- cue.textContent=done?'동작 완료!':'오른발에 체중 싣고 영차!';
+ $('mission').textContent=done?'복구 확인':'매달림';
+ go.textContent=done?'↻ 한 번 더':'💪 움직임 확인';
+ status.textContent=done?'원본 형태 유지 확인! 손발 고정은 전용 관절 자산이 필요해.':'곰돌이 원형 복구 중 · 이미지가 조각나지 않는지 확인해 봐.';
+ cue.textContent=done?'곰돌이 복구 확인':'몸통과 머리가 온전히 보이는지 확인!';
 }
-function reset(){token++;busy=false;done=false;go.disabled=false;progress=0;render(0);labels();}
+function reset(){token++;busy=false;done=false;go.disabled=!ready;progress=0;render(0);labels();}
 function start(){
  if(!ready){status.textContent='곰돌이 이미지 로딩 중이야.';return;}
  if(busy)return;if(done){reset();return;}
- busy=true;go.disabled=true;const own=++token,duration=1300;
- const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- if(reduced){render(1);busy=false;done=true;go.disabled=false;labels();return;}
- lastStamp=0;
- function tick(time){
+ busy=true;go.disabled=true;const own=++token,duration=950;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){render(1);busy=false;done=true;go.disabled=false;labels();return;}
+ let began=null;
+ function tick(now){
   if(own!==token)return;
-  if(!lastStamp)lastStamp=time;
-  const t=clamp((time-lastStamp)/duration);
-  render(t);
+  if(began===null)began=now;
+  const t=clamp((now-began)/duration);render(t);
   if(t<1)requestAnimationFrame(tick);
   else{busy=false;done=true;go.disabled=false;labels();}
  }
  requestAnimationFrame(tick);
 }
-source.addEventListener('load',()=>{ready=true;initParts();resize();reset();});
-source.addEventListener('error',()=>{status.textContent='기존 곰돌이 PNG를 불러오지 못했어. assets 경로를 확인해 줘.';go.disabled=true;});
-$('reset').addEventListener('click',reset);go.addEventListener('click',start);
+function init(){ready=true;resize();reset();}
+source.addEventListener('load',init);
+source.addEventListener('error',()=>{ready=false;status.textContent='곰돌이 PNG를 불러오지 못했어. assets 경로를 확인해 줘.';go.disabled=true;});
+resetButton.addEventListener('click',reset);go.addEventListener('click',start);
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&busy)reset();});
-resize();labels();if(source.complete&&source.naturalWidth){ready=true;initParts();resize();reset();}
+resize();labels();go.disabled=true;
+if(source.complete&&source.naturalWidth)init();
 })();
 </script></body></html>
