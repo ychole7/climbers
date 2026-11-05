@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>영차영차 등반대 · 양손 고정 몸 끌어올리기</title>
+<title>영차영차 등반대 · 체중 이동 등반 검증</title>
 <style>
 :root{font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#603a26}*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}body{background:#5e4b3e}
 .app{max-width:480px;margin:auto;height:100dvh;min-height:590px;position:relative;overflow:hidden;background:#c88c5a url('assets/scenery/gym-art.webp') center/cover}
@@ -11,7 +11,7 @@
 .hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:3%;right:3%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;z-index:10}.hud section{min-width:0;background:#fff1daf5;border:2px solid #fffbef;border-bottom:5px solid #dab289;border-radius:17px;text-align:center;padding:8px 1px;box-shadow:0 4px 10px #4d271a40}.hud small{display:block;font-size:clamp(9px,2.8vw,12px);font-weight:800}.hud b{color:#aa641e;font-size:clamp(14px,4.6vw,22px);white-space:nowrap}
 .wall{position:absolute;top:clamp(108px,18%,160px);bottom:clamp(153px,21%,210px);left:4%;right:4%;background:linear-gradient(130deg,#f9e8d7 0 42%,#f3ded4 42% 72%,#e1d8e6 72%);border:10px solid #c29368;border-radius:24px;box-shadow:0 8px 22px #42251b55;overflow:hidden}.wall:before{content:'';position:absolute;inset:0;background-image:radial-gradient(#957d7159 1.35px,transparent 1.75px);background-size:25px 25px;pointer-events:none}.wall:after{content:'';position:absolute;inset:0;background:linear-gradient(36deg,transparent 43%,#d8b9a477 43.2%,transparent 43.5%),linear-gradient(144deg,transparent 52%,#d8b9a477 52.2%,transparent 52.5%);pointer-events:none}.stage-frame{position:absolute;inset:0;overflow:hidden}.scene{position:absolute;left:50%;top:50%;width:360px;height:520px;transform:translate(-50%,-50%) scale(1);transform-origin:center}
 .hold{position:absolute;border-radius:38% 58% 43% 46%;transform:translate(-50%,-50%) rotate(-12deg);box-shadow:inset -6px -8px 7px #0002,inset 3px 4px 7px #fff7,0 7px 5px #5c342344;z-index:1}.hold:after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);background:#414146;border:3px solid #88858b;border-radius:50%}.yellow{background:#f6bb21}.blue{background:#358ad6}.pink{background:#f36e8c}.green{background:#4ab7a1}.purple{background:#ad79de}.grey{background:#a69a97}
-/* 같은 원본 PNG를 세 영역으로 잘라 사용한다. 그림 파일은 추가하지 않는다. */
+/* 동일한 원본 PNG를 영역별 표시하며 양손 접점을 벽에 유지한다. */
 .bear-part{position:absolute;left:22px;top:155px;width:300px;height:360px;object-fit:fill;pointer-events:none;user-select:none;transform:translateZ(0);will-change:transform;filter:drop-shadow(0 3px 3px #42251b25)}
 .bear-body{z-index:4;clip-path:polygon(37% 22%,63% 22%,80% 39%,96% 62%,100% 100%,0 100%,0 60%,21% 39%);}
 .bear-left{z-index:5;clip-path:polygon(13% 0%,41% 0%,51% 31%,48% 43%,28% 49%,17% 25%);transform-origin:86px 18px}
@@ -22,7 +22,7 @@
 .target{position:absolute;z-index:6;width:74px;height:74px;border:3px dashed #fff9dc;border-radius:50%;box-shadow:0 0 0 5px #f1bb4690,0 0 17px #ffdc54;transform:translate(-50%,-50%);background:#ffe36933;cursor:pointer;touch-action:manipulation;animation:pulse 1.3s infinite}.target.hidden{display:none}@keyframes pulse{50%{box-shadow:0 0 0 10px #eabb4650,0 0 22px #ffdc54}}.cue{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#fff7e9ed;border-radius:18px;font-size:12px;white-space:nowrap;font-weight:800;z-index:7}.contact{position:absolute;width:12px;height:12px;border-radius:50%;z-index:4;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #fff9e7b0;background:#79bd9c;opacity:0;transition:opacity .2s}.contact.visible{opacity:1}
 .footer{position:absolute;bottom:0;left:0;right:0;padding:12px 3% calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#bc815c 15%,#bf8762);z-index:9}.status{border-radius:25px;background:#fff5e3;border:2px solid white;text-align:center;font-weight:800;padding:13px 5px;font-size:clamp(12px,3.5vw,15px);margin:0 0 10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions button{border:2px solid #fff7e9;border-radius:18px;background:#fff0d9;font-weight:900;color:#76452b;padding:14px 0;font-size:16px;box-shadow:0 5px 0 #795d4b45;cursor:pointer}.actions button.main{background:#54b99c;color:white}.actions button:disabled{opacity:.6}.small{text-align:center;color:#fff8e8;font-size:10px;font-weight:700;margin:12px 0 0;text-shadow:0 1px 4px #60392e}@media(max-height:720px){.wall{top:105px;bottom:154px}.footer{padding-top:8px}.small{margin-top:8px}.actions button{padding:9px 0}}@media(prefers-reduced-motion:reduce){.target,.contact{transition:none;animation:none}}
 </style>
-<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=50921"></script>
+<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=53356"></script>
 </head><body>
 <main class="app"><header class="hud"><section><small>STAGE 01</small><b>🐾 연습</b></section><section><small>이동 횟수</small><b id="count">0 / 1</b></section><section><small>곰돌이 미션</small><b id="mission">매달림</b></section></header>
 <section class="wall" id="wall" aria-label="홀드와 벽이 고정된 클라이밍 벽"><div class="stage-frame"><div class="scene" id="scene">
@@ -42,52 +42,69 @@
 <span class="pull-arrow" id="pullArrow">↑ 영차!</span>
 <div id="cue" class="cue">양손을 잡고 몸을 끌어올려!</div>
 </div></div></section>
-<footer class="footer"><p class="status" id="status" role="status">양손을 고정하고 몸을 위로 당겨 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 양손 접점 잠금 · 기존 곰돌이 PNG를 화면에서 영역 분리</p></footer></main>
+<footer class="footer"><p class="status" id="status" role="status">양손을 고정하고 체중을 옮기고 발로 밀어 올라가 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 체중 이동 → 발로 밀기 → 상체 상승 · 기존 PNG 유지</p></footer></main>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const wall=$('wall'),scene=$('scene'),body=$('bearBody'),left=$('armLeft'),right=$('armRight');
 const go=$('go'),resetButton=$('reset'),arrow=$('pullArrow'),cue=$('cue'),status=$('status');
+const gripL=$('gripL'),gripR=$('gripR');
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-let frame=0,token=0,progress=0,animating=false,completed=false;
-const ease=t=>t*t*(3-2*t),clamp=t=>Math.max(0,Math.min(1,t));
-function resize(){const scale=Math.min(1,(wall.clientWidth-20)/360,(wall.clientHeight-20)/520);scene.style.transform=`translate(-50%,-50%) scale(${scale})`;}
+let frame=0,token=0,animating=false,completed=false;
+const clamp=t=>Math.max(0,Math.min(1,t));
+const smooth=t=>{t=clamp(t);return t*t*(3-2*t)};
+const phase=(t,a,b)=>smooth((t-a)/(b-a));
+function resize(){
+ const scale=Math.min(1,(wall.clientWidth-20)/360,(wall.clientHeight-20)/520);
+ scene.style.transform=`translate(-50%,-50%) scale(${scale})`;
+}
+/* 움직임 순서: 체중 이동 → 발로 밀기 → 상체 따라오기 → 자세 안정.
+   좌우 손 영역은 손의 접점(pivot)을 기준으로 변형되므로 홀드 좌표는 고정된다.
+   기존 PNG 한 장의 화면상 영역 분리이므로 실물 관절 변형과 동일하지는 않다. */
 function apply(t){
- // 두 손의 기준점은 이미지상의 (86,18), (196,18). 각 팔의 transform-origin을 손으로 고정.
- // 팔은 세로로 짧아지고 몸통 영역만 위로 올라간다. 이동 폭을 작게 유지해 이음새 파열을 줄임.
- progress=t;
- const lift=25*t;
- body.style.transform=`translate3d(0,${-lift}px,0)`;
- left.style.transform=`scaleY(${1-.18*t}) rotate(${-3*t}deg)`;
- right.style.transform=`scaleY(${1-.18*t}) rotate(${3*t}deg)`;
- arrow.style.opacity=t>0.12&&t<.95?String(Math.min(1,(t-.12)*5)): '0';
- arrow.style.transform=`translate(-50%,${-lift}px)`;
- $('gripL').classList.toggle('show',t>0.03);
- $('gripR').classList.toggle('show',t>0.03);
+ const weight=phase(t,.03,.22);       // 왼발 쪽 체중 싣기
+ const push=phase(t,.20,.64);         // 발을 디디며 골반 상승
+ const settle=phase(t,.76,1);        // 상체/골반을 다시 중앙으로
+ const lift=29*push-2.5*weight+1.5*settle;
+ const sway=-7*weight+5*push+2*settle;
+ const roll=-2.4*weight+1.5*push+.9*settle;
+ // 몸통은 상승하되 작은 수평 이동과 회전을 넣어 기계적인 직선 이동을 피한다.
+ body.style.transform=`translate3d(${sway.toFixed(2)}px,${(-lift).toFixed(2)}px,0) rotate(${roll.toFixed(2)}deg)`;
+ // 손 위치는 고정; 팔 길이만 축소되어 팔꿈치를 굽히는 동작을 약하게 암시한다.
+ const shorten=.22*push;
+ left.style.transform=`rotate(${(-1.8*weight-2*push+1.5*settle).toFixed(2)}deg) scaleY(${(1-shorten).toFixed(3)})`;
+ right.style.transform=`rotate(${(2.5*weight+2.7*push-1.6*settle).toFixed(2)}deg) scaleY(${(1-shorten*.92).toFixed(3)})`;
+ arrow.style.opacity=(t>.25&&t<.8)?String(Math.min(1,Math.min((t-.25)*9,(.8-t)*10))):'0';
+ arrow.style.transform=`translate(-50%,${(-lift).toFixed(2)}px)`;
+ gripL.classList.toggle('show',t>.01);
+ gripR.classList.toggle('show',t>.01);
 }
 function render(){
  $('count').textContent=completed?'1 / 1':'0 / 1';
- $('mission').textContent=completed?'당기기 성공!':'매달림';
- go.textContent=completed?'↻ 한 번 더':'💪 몸 끌어올리기';
- status.textContent=completed?'양손은 같은 홀드에! 몸통만 위로 올라갔는지 확인해 봐.':'양손 홀드를 놓지 않고 몸통을 위로 당겨 봐!';
- cue.textContent=completed?'몸통 상승 완료!':'양손 고정 → 몸통 상승';
+ $('mission').textContent=completed?'상승 성공!':'매달림';
+ go.textContent=completed?'↻ 한 번 더':'💪 영차! 올라가기';
+ status.textContent=completed?'높은 자세 유지! 손이 홀드에 고정되는지 확인해 봐.':'체중 이동 → 발로 밀기 → 상체 상승';
+ cue.textContent=completed?'자세 안정 완료!':'발로 밀어 몸을 올려 봐!';
 }
 function cancel(){token++;cancelAnimationFrame(frame);animating=false;go.disabled=false;}
 function restart(){cancel();completed=false;apply(0);render();}
 function animate(){
- if(animating)return;if(completed){restart();return;}
+ if(animating)return;
+ if(completed){restart();return;}
  const id=++token;animating=true;go.disabled=true;
  if(reduced.matches){apply(1);animating=false;go.disabled=false;completed=true;render();return;}
- const start=performance.now(),duration=1100;
- function tick(now){if(id!==token)return;
+ const start=performance.now(),duration=1380;
+ function tick(now){
+  if(id!==token)return;
   const elapsed=clamp((now-start)/duration);
-  // 0~20% 준비, 20~80% 당기기, 80~100% 자세 유지.
-  const t=ease(clamp((elapsed-.20)/.60));apply(t);
-  if(elapsed<1){frame=requestAnimationFrame(tick);}else{animating=false;completed=true;go.disabled=false;apply(1);render();}
+  apply(elapsed);
+  if(elapsed<1){frame=requestAnimationFrame(tick);}
+  else{animating=false;completed=true;go.disabled=false;apply(1);render();}
  }
  frame=requestAnimationFrame(tick);
 }
-go.addEventListener('click',animate);resetButton.addEventListener('click',restart);
+go.addEventListener('click',animate);
+resetButton.addEventListener('click',restart);
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&animating)restart();});
 resize();restart();
