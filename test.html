@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>영차영차 등반대 · 체중 이동 등반 검증</title>
+<title>영차영차 등반대 · 메시 스키닝 등반 테스트</title>
 <style>
 :root{font-family:system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#603a26}*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}body{background:#5e4b3e}
 .app{max-width:480px;margin:auto;height:100dvh;min-height:590px;position:relative;overflow:hidden;background:#c88c5a url('assets/scenery/gym-art.webp') center/cover}
@@ -11,18 +11,14 @@
 .hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:3%;right:3%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;z-index:10}.hud section{min-width:0;background:#fff1daf5;border:2px solid #fffbef;border-bottom:5px solid #dab289;border-radius:17px;text-align:center;padding:8px 1px;box-shadow:0 4px 10px #4d271a40}.hud small{display:block;font-size:clamp(9px,2.8vw,12px);font-weight:800}.hud b{color:#aa641e;font-size:clamp(14px,4.6vw,22px);white-space:nowrap}
 .wall{position:absolute;top:clamp(108px,18%,160px);bottom:clamp(153px,21%,210px);left:4%;right:4%;background:linear-gradient(130deg,#f9e8d7 0 42%,#f3ded4 42% 72%,#e1d8e6 72%);border:10px solid #c29368;border-radius:24px;box-shadow:0 8px 22px #42251b55;overflow:hidden}.wall:before{content:'';position:absolute;inset:0;background-image:radial-gradient(#957d7159 1.35px,transparent 1.75px);background-size:25px 25px;pointer-events:none}.wall:after{content:'';position:absolute;inset:0;background:linear-gradient(36deg,transparent 43%,#d8b9a477 43.2%,transparent 43.5%),linear-gradient(144deg,transparent 52%,#d8b9a477 52.2%,transparent 52.5%);pointer-events:none}.stage-frame{position:absolute;inset:0;overflow:hidden}.scene{position:absolute;left:50%;top:50%;width:360px;height:520px;transform:translate(-50%,-50%) scale(1);transform-origin:center}
 .hold{position:absolute;border-radius:38% 58% 43% 46%;transform:translate(-50%,-50%) rotate(-12deg);box-shadow:inset -6px -8px 7px #0002,inset 3px 4px 7px #fff7,0 7px 5px #5c342344;z-index:1}.hold:after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);background:#414146;border:3px solid #88858b;border-radius:50%}.yellow{background:#f6bb21}.blue{background:#358ad6}.pink{background:#f36e8c}.green{background:#4ab7a1}.purple{background:#ad79de}.grey{background:#a69a97}
-/* 동일한 원본 PNG를 영역별 표시하며 양손 접점을 벽에 유지한다. */
-.bear-part{position:absolute;left:22px;top:155px;width:300px;height:360px;object-fit:fill;pointer-events:none;user-select:none;transform:translateZ(0);will-change:transform;filter:drop-shadow(0 3px 3px #42251b25)}
-.bear-body{z-index:4;clip-path:polygon(37% 22%,63% 22%,80% 39%,96% 62%,100% 100%,0 100%,0 60%,21% 39%);}
-.bear-left{z-index:5;clip-path:polygon(13% 0%,41% 0%,51% 31%,48% 43%,28% 49%,17% 25%);transform-origin:86px 18px}
-.bear-right{z-index:5;clip-path:polygon(54% 0%,80% 0%,85% 30%,73% 47%,55% 42%,60% 25%);transform-origin:196px 18px}
-.grip-dot{position:absolute;z-index:7;width:11px;height:11px;background:#ffed9a;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 5px #784b23aa;opacity:0;transition:opacity .15s}
-.grip-dot.show{opacity:1}
-.pull-arrow{position:absolute;left:150px;top:325px;transform:translate(-50%,0);z-index:7;color:#fff9cb;background:#704b37cc;padding:4px 10px;border-radius:20px;font-size:20px;opacity:0;pointer-events:none}
+/* 원본 캐릭터 한 장을 작은 삼각형 메시로 변형한다. 영역별 clip 조각은 사용하지 않는다. */
+.bear-skin{position:absolute;inset:0;width:360px;height:520px;z-index:4;pointer-events:none;filter:drop-shadow(0 4px 3px #42251b20)}
+.grip-dot{position:absolute;z-index:7;width:10px;height:10px;background:#ffed9a;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 5px #784b23aa;opacity:0;transition:opacity .15s}.grip-dot.show{opacity:1}
+.pull-arrow{position:absolute;left:150px;top:280px;transform:translate(-50%,0);z-index:7;color:#fff9cb;background:#704b37cc;padding:4px 10px;border-radius:20px;font-size:20px;opacity:0;pointer-events:none}
 .target{position:absolute;z-index:6;width:74px;height:74px;border:3px dashed #fff9dc;border-radius:50%;box-shadow:0 0 0 5px #f1bb4690,0 0 17px #ffdc54;transform:translate(-50%,-50%);background:#ffe36933;cursor:pointer;touch-action:manipulation;animation:pulse 1.3s infinite}.target.hidden{display:none}@keyframes pulse{50%{box-shadow:0 0 0 10px #eabb4650,0 0 22px #ffdc54}}.cue{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#fff7e9ed;border-radius:18px;font-size:12px;white-space:nowrap;font-weight:800;z-index:7}.contact{position:absolute;width:12px;height:12px;border-radius:50%;z-index:4;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #fff9e7b0;background:#79bd9c;opacity:0;transition:opacity .2s}.contact.visible{opacity:1}
 .footer{position:absolute;bottom:0;left:0;right:0;padding:12px 3% calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#bc815c 15%,#bf8762);z-index:9}.status{border-radius:25px;background:#fff5e3;border:2px solid white;text-align:center;font-weight:800;padding:13px 5px;font-size:clamp(12px,3.5vw,15px);margin:0 0 10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions button{border:2px solid #fff7e9;border-radius:18px;background:#fff0d9;font-weight:900;color:#76452b;padding:14px 0;font-size:16px;box-shadow:0 5px 0 #795d4b45;cursor:pointer}.actions button.main{background:#54b99c;color:white}.actions button:disabled{opacity:.6}.small{text-align:center;color:#fff8e8;font-size:10px;font-weight:700;margin:12px 0 0;text-shadow:0 1px 4px #60392e}@media(max-height:720px){.wall{top:105px;bottom:154px}.footer{padding-top:8px}.small{margin-top:8px}.actions button{padding:9px 0}}@media(prefers-reduced-motion:reduce){.target,.contact{transition:none;animation:none}}
 </style>
-<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=53356"></script>
+<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=55255"></script>
 </head><body>
 <main class="app"><header class="hud"><section><small>STAGE 01</small><b>🐾 연습</b></section><section><small>이동 횟수</small><b id="count">0 / 1</b></section><section><small>곰돌이 미션</small><b id="mission">매달림</b></section></header>
 <section class="wall" id="wall" aria-label="홀드와 벽이 고정된 클라이밍 벽"><div class="stage-frame"><div class="scene" id="scene">
@@ -35,78 +31,118 @@
 <div class="hold grey" style="left:76px;top:94px;width:37px;height:32px"></div>
 <div class="hold purple" style="left:290px;top:46px;width:51px;height:45px"></div>
 <div class="hold yellow" style="left:64px;top:366px;width:56px;height:43px"></div>
-<img class="bear-part bear-left" id="armLeft" src="assets/characters/bear/poses/bear_pose_01.png" alt="" draggable="false" aria-hidden="true">
-<img class="bear-part bear-right" id="armRight" src="assets/characters/bear/poses/bear_pose_01.png" alt="" draggable="false" aria-hidden="true">
-<img class="bear-part bear-body" id="bearBody" src="assets/characters/bear/poses/bear_pose_01.png" alt="홀드를 양손으로 잡은 곰돌이" draggable="false">
+<canvas id="bearCanvas" class="bear-skin" width="720" height="1040" role="img" aria-label="양손으로 홀드를 잡고 체중을 실어 올라가는 곰돌이"></canvas>
+<img id="bearSource" src="assets/characters/bear/poses/bear_pose_01.png" alt="" hidden crossorigin="anonymous">
 <span class="grip-dot" id="gripL" style="left:108px;top:173px"></span><span class="grip-dot" id="gripR" style="left:218px;top:173px"></span>
 <span class="pull-arrow" id="pullArrow">↑ 영차!</span>
 <div id="cue" class="cue">양손을 잡고 몸을 끌어올려!</div>
 </div></div></section>
-<footer class="footer"><p class="status" id="status" role="status">양손을 고정하고 체중을 옮기고 발로 밀어 올라가 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 체중 이동 → 발로 밀기 → 상체 상승 · 기존 PNG 유지</p></footer></main>
+<footer class="footer"><p class="status" id="status" role="status">양손을 고정하고 체중을 옮기고 발로 밀어 올라가 봐!</p><div class="actions"><button id="reset" type="button">↻ 다시하기</button><button id="go" class="main" type="button">💪 몸 끌어올리기</button></div><p class="small">고정 벽 · 손발 기준점 고정 · 원본 PNG 메시 변형</p></footer></main>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const wall=$('wall'),scene=$('scene'),body=$('bearBody'),left=$('armLeft'),right=$('armRight');
-const go=$('go'),resetButton=$('reset'),arrow=$('pullArrow'),cue=$('cue'),status=$('status');
-const gripL=$('gripL'),gripR=$('gripR');
+const wall=$('wall'),scene=$('scene'),source=$('bearSource'),canvas=$('bearCanvas');
+const ctx=canvas.getContext('2d',{alpha:true}),go=$('go'),resetButton=$('reset');
+const arrow=$('pullArrow'),cue=$('cue'),status=$('status'),gripL=$('gripL'),gripR=$('gripR');
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-let frame=0,token=0,animating=false,completed=false;
+let frame=0,token=0,animating=false,completed=false,loaded=false,lastT=0;
 const clamp=t=>Math.max(0,Math.min(1,t));
 const smooth=t=>{t=clamp(t);return t*t*(3-2*t)};
 const phase=(t,a,b)=>smooth((t-a)/(b-a));
+// 손가락 (86,18), (196,18) / 발바닥 (99,319), (215,328)을 원본 좌표의 기준점으로 둔다.
+const xs=[0,30,60,86,108,132,156,180,196,218,250,280,300];
+const ys=[0,18,44,72,105,132,164,195,222,249,280,305,327,360];
 function resize(){
  const scale=Math.min(1,(wall.clientWidth-20)/360,(wall.clientHeight-20)/520);
  scene.style.transform=`translate(-50%,-50%) scale(${scale})`;
+ const ratio=Math.min(2,window.devicePixelRatio||1);
+ canvas.width=Math.round(360*ratio);canvas.height=Math.round(520*ratio);
+ ctx.setTransform(ratio,0,0,ratio,0,0);renderSkin(lastT);
 }
-/* 움직임 순서: 체중 이동 → 발로 밀기 → 상체 따라오기 → 자세 안정.
-   좌우 손 영역은 손의 접점(pivot)을 기준으로 변형되므로 홀드 좌표는 고정된다.
-   기존 PNG 한 장의 화면상 영역 분리이므로 실물 관절 변형과 동일하지는 않다. */
+function weightNodes(t){
+ const brace=phase(t,.03,.19),push=phase(t,.18,.72),settle=phase(t,.72,1);
+ const lift=49*push-3*settle,lean=-9*brace+7*push+2*settle;
+ const shift=lift*.10;
+ // 이미지 내부의 고정 손·발, 팔꿈치, 어깨, 골반, 무릎에 각각 목표 변위를 둔다.
+ return [
+  [86,18,0,0],[196,18,0,0],
+  [84,72,-1.5*brace,-lift*.22],[203,72,1.5*brace,-lift*.22],
+  [116,126,lean*.5,-lift*.69],[182,126,lean*.7,-lift*.69],
+  [146,151,lean,-lift*.86],[152,192,lean,-lift],
+  [151,226,lean+shift,-lift],
+  [101,267,lean*.7,-lift*.50],[221,273,lean*.6,-lift*.45],
+  [99,319,0,0],[215,328,0,0]
+ ];
+}
+function displacement(x,y,nodes){
+ let sum=0,dx=0,dy=0;
+ for(const n of nodes){const ax=x-n[0],ay=y-n[1],d2=ax*ax+ay*ay;
+  if(d2<.01)return [n[2],n[3]];
+  // 국소 기준점 중심으로 가중치를 부여하되, 경계는 연속적으로 변형된다.
+  const w=1/Math.pow(d2+400,1.55);sum+=w;dx+=w*n[2];dy+=w*n[3];
+ }
+ return [dx/sum,dy/sum];
+}
+// 한 삼각형에 원본 이미지의 대응 영역을 affine 변환으로 텍스처 매핑한다.
+function triangle(a,b,c,A,B,C){
+ const det=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+ if(Math.abs(det)<.001)return;
+ const d1=B[0]-A[0],d2=C[0]-A[0],e1=B[1]-A[1],e2=C[1]-A[1];
+ const m00=(d1*(c[1]-a[1])-d2*(b[1]-a[1]))/det;
+ const m01=(d2*(b[0]-a[0])-d1*(c[0]-a[0]))/det;
+ const m10=(e1*(c[1]-a[1])-e2*(b[1]-a[1]))/det;
+ const m11=(e2*(b[0]-a[0])-e1*(c[0]-a[0]))/det;
+ const tx=A[0]-m00*a[0]-m01*a[1],ty=A[1]-m10*a[0]-m11*a[1];
+ ctx.save();ctx.beginPath();ctx.moveTo(...A);ctx.lineTo(...B);ctx.lineTo(...C);ctx.closePath();ctx.clip();
+ ctx.transform(m00,m10,m01,m11,tx,ty);ctx.drawImage(source,0,0,300,360);ctx.restore();
+}
+function renderSkin(t){
+ lastT=t;ctx.clearRect(0,0,360,520);if(!loaded)return;
+ const nodes=weightNodes(t);
+ const positions=ys.map(y=>xs.map(x=>{const d=displacement(x,y,nodes);return [x+22+d[0],y+155+d[1]]}));
+ for(let j=0;j<ys.length-1;j++)for(let i=0;i<xs.length-1;i++){
+  const a=[xs[i],ys[j]],b=[xs[i+1],ys[j]],c=[xs[i],ys[j+1]],d=[xs[i+1],ys[j+1]];
+  const A=positions[j][i],B=positions[j][i+1],C=positions[j+1][i],D=positions[j+1][i+1];
+  triangle(a,b,c,A,B,C);triangle(b,d,c,B,D,C);
+ }
+}
 function apply(t){
- const weight=phase(t,.03,.22);       // 왼발 쪽 체중 싣기
- const push=phase(t,.20,.64);         // 발을 디디며 골반 상승
- const settle=phase(t,.76,1);        // 상체/골반을 다시 중앙으로
- const lift=29*push-2.5*weight+1.5*settle;
- const sway=-7*weight+5*push+2*settle;
- const roll=-2.4*weight+1.5*push+.9*settle;
- // 몸통은 상승하되 작은 수평 이동과 회전을 넣어 기계적인 직선 이동을 피한다.
- body.style.transform=`translate3d(${sway.toFixed(2)}px,${(-lift).toFixed(2)}px,0) rotate(${roll.toFixed(2)}deg)`;
- // 손 위치는 고정; 팔 길이만 축소되어 팔꿈치를 굽히는 동작을 약하게 암시한다.
- const shorten=.22*push;
- left.style.transform=`rotate(${(-1.8*weight-2*push+1.5*settle).toFixed(2)}deg) scaleY(${(1-shorten).toFixed(3)})`;
- right.style.transform=`rotate(${(2.5*weight+2.7*push-1.6*settle).toFixed(2)}deg) scaleY(${(1-shorten*.92).toFixed(3)})`;
- arrow.style.opacity=(t>.25&&t<.8)?String(Math.min(1,Math.min((t-.25)*9,(.8-t)*10))):'0';
- arrow.style.transform=`translate(-50%,${(-lift).toFixed(2)}px)`;
- gripL.classList.toggle('show',t>.01);
- gripR.classList.toggle('show',t>.01);
+ renderSkin(t);
+ const lift=49*phase(t,.18,.72)-3*phase(t,.72,1);
+ arrow.style.opacity=(t>.24&&t<.78)?String(Math.min(1,(t-.24)*9,(.78-t)*10)):'0';
+ arrow.style.transform=`translate(-50%,${(-lift).toFixed(1)}px)`;
+ gripL.classList.toggle('show',t>.01);gripR.classList.toggle('show',t>.01);
 }
 function render(){
  $('count').textContent=completed?'1 / 1':'0 / 1';
  $('mission').textContent=completed?'상승 성공!':'매달림';
  go.textContent=completed?'↻ 한 번 더':'💪 영차! 올라가기';
- status.textContent=completed?'높은 자세 유지! 손이 홀드에 고정되는지 확인해 봐.':'체중 이동 → 발로 밀기 → 상체 상승';
- cue.textContent=completed?'자세 안정 완료!':'발로 밀어 몸을 올려 봐!';
+ status.textContent=completed?'몸통이 올라간 자세 유지! 손발이 미끄러지는지 확인해 봐.':'체중 옮기기 → 발로 밀기 → 골반과 가슴 상승';
+ cue.textContent=completed?'자세 안정 완료!':'손발은 고정, 몸통만 올라가기';
 }
 function cancel(){token++;cancelAnimationFrame(frame);animating=false;go.disabled=false;}
 function restart(){cancel();completed=false;apply(0);render();}
 function animate(){
- if(animating)return;
+ if(animating||!loaded)return;
  if(completed){restart();return;}
  const id=++token;animating=true;go.disabled=true;
  if(reduced.matches){apply(1);animating=false;go.disabled=false;completed=true;render();return;}
- const start=performance.now(),duration=1380;
+ const start=performance.now(),duration=1150;
  function tick(now){
   if(id!==token)return;
-  const elapsed=clamp((now-start)/duration);
-  apply(elapsed);
+  const elapsed=clamp((now-start)/duration);apply(elapsed);
   if(elapsed<1){frame=requestAnimationFrame(tick);}
   else{animating=false;completed=true;go.disabled=false;apply(1);render();}
  }
  frame=requestAnimationFrame(tick);
 }
-go.addEventListener('click',animate);
-resetButton.addEventListener('click',restart);
+function ready(){if(!source.naturalWidth){status.textContent='곰돌이 PNG 로딩에 실패했어. assets 경로를 확인해 줘.';go.disabled=true;return;}
+ loaded=true;go.disabled=false;resize();restart();}
+source.addEventListener('load',ready);
+source.addEventListener('error',()=>{status.textContent='곰돌이 PNG를 읽을 수 없어. 기존 자산 경로를 확인해 줘.';go.disabled=true;});
+go.addEventListener('click',animate);resetButton.addEventListener('click',restart);
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&animating)restart();});
-resize();restart();
+go.disabled=true;resize();if(source.complete)ready();else status.textContent='곰돌이 준비 중…';
 })();
 </script></body></html>
