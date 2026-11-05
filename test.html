@@ -67,26 +67,31 @@ function next(){
  if(busy)return;if(step===2){reset();return;}
  busy=true;go.disabled=true;target.disabled=true;target.classList.add('hidden');
  const id=++motionId,newStep=step+1,old=sprites[step],fresh=sprites[newStep],a=poses[step],b=poses[newStep];
- // 목표 포즈는 최종 손/발 접점에 정확히 정렬한다.
- // 첫 프레임은 기존 몸통 중심과 겹쳐서 이미지 교체로 인한 순간 이동을 줄인다.
+ // 통짜 포즈 교체: 몸통 중심의 이동 경로를 공유하되 두 캐릭터의 겹침은 최소화한다.
  const oldBody={x:a.x+a.body.x,y:a.y+a.body.y};
  const nextBody={x:b.x+b.body.x,y:b.y+b.body.y};
  const dx=nextBody.x-oldBody.x,dy=nextBody.y-oldBody.y;
- const start={x:oldBody.x-b.body.x,y:oldBody.y-b.body.y};
+ // 처음에는 기존 자세로 힘을 주고, 중간에 빠르게 포즈를 바꾼 뒤 새 자세로 안착한다.
+ const prepLift=Math.min(12,Math.max(5,-dy*.24));
+ const startBody={x:oldBody.x+dx*.15,y:oldBody.y-prepLift};
+ const start={x:startBody.x-b.body.x,y:startBody.y-b.body.y};
  old.classList.add('moving');fresh.classList.add('moving');fresh.classList.remove('on');
  put(old,a.x,a.y);put(fresh,start.x,start.y);
  old.style.opacity='1';fresh.style.opacity='0';
  if(prefersReduced.matches){finish(id,newStep);return;}
  const startAt=performance.now();
+ const clamp=v=>Math.max(0,Math.min(1,v));
  function tick(now){if(id!==motionId)return;
-  const t=Math.min(1,(now-startAt)/duration),e=ease(t);
-  // 몸통이 실질적으로 위쪽으로 이동할 때 약간의 무게감(준비-상승-안착)을 준다.
-  const lift=t<.19?2*Math.sin(Math.PI*t/.19):0;
-  put(fresh,start.x+dx*e,start.y+dy*e+lift);
-  // 이전 포즈를 목표로 순간 이동시키지 않는다. 화면에서 짧게 잔상처럼 빠진다.
-  put(old,a.x+dx*e*.16,a.y+dy*e*.16);
-  const mix=Math.max(0,Math.min(1,(t-.08)/.66));
-  fresh.style.opacity=String(mix);old.style.opacity=String(1-mix);
+  const t=clamp((now-startAt)/duration);
+  // 0~35%: 기존 자세의 준비/밀어올리기. 손발 접점 이탈을 줄이기 위해 상승량 제한.
+  const push=ease(clamp((t-.09)/.35));
+  put(old,a.x+dx*.15*push,a.y-prepLift*push+(t<.1?3*Math.sin(Math.PI*t/.1):0));
+  // 35~58%: 바디 중심 위치를 맞춘 상태에서 110ms 정도만 빠르게 교체.
+  const swap=ease(clamp((t-.35)/.23));
+  old.style.opacity=String(1-swap);fresh.style.opacity=String(swap);
+  // 45~100%: 목표 포즈로 몸통을 상승시키고 최종 손발 접점에 정확히 안착.
+  const settle=ease(clamp((t-.45)/.55));
+  put(fresh,start.x+(b.x-start.x)*settle,start.y+(b.y-start.y)*settle);
   if(t<1)frameId=requestAnimationFrame(tick);else finish(id,newStep);
  }
  frameId=requestAnimationFrame(tick);
