@@ -54,43 +54,99 @@ function joint(a,b,l1,l2,side){
 }
 function ellipse(x,y,rx,ry,fill,rot=0,stroke=null){
  ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
- if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}
+ if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.4;ctx.stroke();}
 }
-function fur(x,y,r){const g=ctx.createRadialGradient(x-r*.36,y-r*.48,r*.09,x,y,r*1.3);g.addColorStop(0,'#e9a966');g.addColorStop(.55,'#b66c35');g.addColorStop(1,'#82451f');return g;}
+// Soft rounded plush shading follows each moving part; no full-body PNG cropping.
+function plushGradient(x,y,r){
+ const g=ctx.createRadialGradient(x-r*.40,y-r*.52,r*.03,x+r*.13,y+r*.20,r*1.33);
+ g.addColorStop(0,'#f5c18a');g.addColorStop(.35,'#d99358');g.addColorStop(.72,'#b96f39');g.addColorStop(1,'#884923');return g;
+}
+function furDetail(x,y,rx,ry,seed=0){
+ ctx.save();ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.clip();
+ // Fine, seeded fur flecks avoid per-frame randomness and noisy animation.
+ for(let i=0;i<62;i++){
+  const a=((i*137.508+seed*71)%360)*Math.PI/180;
+  const rr=Math.sqrt(((i*43+19+seed*17)%101)/101);
+  const px=x+Math.cos(a)*rx*rr,py=y+Math.sin(a)*ry*rr;
+  ctx.strokeStyle=i%3===0?'#ffddae':'#874321';ctx.globalAlpha=i%3===0?.14:.09;
+  ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(px-1,py-1);ctx.lineTo(px+1,py+.7);ctx.stroke();
+ }
+ ctx.restore();ctx.globalAlpha=1;
+}
+function plushEllipse(x,y,rx,ry,angle=0,seed=0){
+ ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+ ellipse(0,0,rx+1,ry+1,'#8f512e');
+ ellipse(0,0,rx,ry,plushGradient(0,0,Math.max(rx,ry)));
+ ellipse(-rx*.18,-ry*.23,rx*.48,ry*.45,'#f2b77b');
+ ctx.globalAlpha=.19;ellipse(-rx*.18,-ry*.23,rx*.48,ry*.45,'#f2b77b');ctx.globalAlpha=1;
+ furDetail(0,0,rx,ry,seed);
+ ctx.restore();
+}
 function limb(a,b,outer,inner,width){
- // Each bone is a purpose-drawn capsule, never a crop from the full-body PNG.
- ctx.lineCap='round';ctx.lineJoin='round';
- ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width+3;ctx.strokeStyle='#81451e';ctx.stroke();
- ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineWidth=width;ctx.strokeStyle=outer;ctx.stroke();
- ctx.beginPath();ctx.moveTo(a.x-2,a.y-2);ctx.lineTo(b.x-2,b.y-2);ctx.lineWidth=width*.28;ctx.strokeStyle=inner;ctx.globalAlpha=.38;ctx.stroke();ctx.globalAlpha=1;
+ // Distinct tapered plush segments with rounded cuffs; unlike thin robot rods.
+ const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy),ang=Math.atan2(dy,dx);
+ ctx.save();ctx.translate(a.x,a.y);ctx.rotate(ang);
+ const r=width*.55;
+ const shade=ctx.createLinearGradient(0,-r,0,r);
+ shade.addColorStop(0,'#f2bb82');shade.addColorStop(.35,'#d79356');shade.addColorStop(.76,'#b96b37');shade.addColorStop(1,'#86502e');
+ ctx.beginPath();ctx.moveTo(-5,-r*.85);
+ ctx.bezierCurveTo(L*.19,-r*1.17,L*.73,-r*.91,L+3,-r*.75);
+ ctx.quadraticCurveTo(L+r*.66,-r*.4,L+r*.57,0);
+ ctx.quadraticCurveTo(L+r*.65,r*.7,L+1,r*.78);
+ ctx.bezierCurveTo(L*.65,r*1.04,L*.22,r*.98,-5,r*.83);
+ ctx.quadraticCurveTo(-r*.8,0,-5,-r*.85);ctx.closePath();
+ ctx.fillStyle=shade;ctx.fill();ctx.strokeStyle='#92512c';ctx.lineWidth=1.3;ctx.stroke();
+ ctx.save();ctx.clip();
+ ctx.globalAlpha=.19;ctx.fillStyle='#ffdda4';ctx.beginPath();ctx.ellipse(L*.37,-r*.41,L*.35,r*.20,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ for(let i=0;i<36;i++){
+  const x=(i*53%101)/101*L,y=((i*29+11)%101)/101*2*r-r;
+  ctx.globalAlpha=.09;ctx.strokeStyle=i%2?'#fff2d1':'#713c21';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+1.5,y+1);ctx.stroke();
+ }
+ ctx.restore();ctx.restore();ctx.globalAlpha=1;
 }
 function paw(p,foot=false){
  ctx.save();ctx.translate(p.x,p.y);
- ellipse(0,0,foot?18:16,foot?16:17,fur(0,0,20),0,'#8e5029');
- ellipse(0,2,foot?9:8,foot?8:7,'#f1c6a1');
- for(const x of [-8,0,8])ellipse(x,-8,3,3,'#f1c6a1');
+ plushEllipse(0,0,foot?20:18,foot?19:18,foot?-.16:.04,foot?8:4);
+ // Small cream cuff and pads, deliberately not oversized.
+ ellipse(0,foot?4:3,foot?11:9,foot?9:8,'#efd2ad',-.1);
+ ellipse(-7,-8,3,3,'#f5d9ba');ellipse(0,-10,3,3,'#f5d9ba');ellipse(7,-8,3,3,'#f5d9ba');
  ctx.restore();
 }
 function torso(center,tilt){
  ctx.save();ctx.translate(center.x,center.y);ctx.rotate(tilt);
- // A designed unified torso sprite, with harness fixed to the torso pivot.
- ellipse(0,0,54,75,fur(0,-5,75),0,'#915027');
- ctx.strokeStyle='#2a5680';ctx.lineWidth=13;ctx.lineCap='round';
- ctx.beginPath();ctx.moveTo(-37,-50);ctx.lineTo(30,47);ctx.moveTo(36,-50);ctx.lineTo(-30,47);ctx.stroke();
- ctx.strokeStyle='#5bb5e0';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-36,-49);ctx.lineTo(30,46);ctx.moveTo(35,-49);ctx.lineTo(-29,45);ctx.stroke();
- ctx.strokeStyle='#2c4968';ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(-41,45);ctx.quadraticCurveTo(0,52,42,45);ctx.stroke();
- ellipse(0,1,14,14,'#f7bc55',0,'#9b6231');ellipse(0,1,8,8,'#f7d894');
- ellipse(0,62,19,17,fur(0,61,22),0,'#955329');
+ // Plush bear torso and rump keep the original broad, rounded silhouette.
+ plushEllipse(0,1,56,75,0,11);
+ plushEllipse(0,57,36,25,0,12);
+ // Legs/harness attached to a single body, straps laid flush over fur.
+ ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.strokeStyle='#54465c';ctx.lineWidth=16;
+ ctx.beginPath();ctx.moveTo(-38,-48);ctx.quadraticCurveTo(-10,-8,29,47);
+ ctx.moveTo(37,-48);ctx.quadraticCurveTo(11,-9,-30,47);ctx.stroke();
+ ctx.strokeStyle='#f1b94b';ctx.lineWidth=11;
+ ctx.beginPath();ctx.moveTo(-37,-48);ctx.quadraticCurveTo(-7,-6,29,47);
+ ctx.moveTo(36,-48);ctx.quadraticCurveTo(8,-6,-30,47);ctx.stroke();
+ ctx.strokeStyle='#ffdc75';ctx.lineWidth=2.8;
+ ctx.beginPath();ctx.moveTo(-37,-48);ctx.quadraticCurveTo(-7,-6,29,47);
+ ctx.moveTo(36,-48);ctx.quadraticCurveTo(8,-6,-30,47);ctx.stroke();
+ ctx.strokeStyle='#425470';ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(-39,48);ctx.quadraticCurveTo(0,55,39,48);ctx.stroke();
+ ctx.strokeStyle='#b9a1a0';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-37,44);ctx.quadraticCurveTo(0,51,37,44);ctx.stroke();
+ ellipse(0,2,15,15,'#aa6b3f',0,'#6f482f');ellipse(0,0,13,13,'#f7cb70');
+ ellipse(-4,-4,5,5,'#ffe2a0');
+ // Tail sits on harness in the back, rather than floating behind the body.
+ plushEllipse(0,57,19,18,0,19);
  ctx.restore();
 }
 function head(center,angle){
  ctx.save();ctx.translate(center.x,center.y);ctx.rotate(angle);
- ellipse(-36,-42,19,21,fur(-36,-42,22),0,'#965b2d');ellipse(36,-43,19,21,fur(36,-43,22),0,'#965b2d');
- ellipse(-36,-42,8,10,'#bb7447');ellipse(36,-43,8,10,'#bb7447');
- ellipse(0,0,55,52,fur(0,-7,58),0,'#94552c');
- // Back 3/4, glimpse of right-side muzzle and one eye, not full front view.
- ellipse(47,13,17,19,'#d99864',-.25);
- ellipse(50,1,4,5,'#3b251b');ellipse(60,18,6,4,'#633a2d');
+ plushEllipse(-39,-40,20,22,-.12,21);
+ plushEllipse(38,-41,20,22,.12,22);
+ ellipse(-39,-41,8,10,'#be7b58');ellipse(38,-42,8,10,'#be7b58');
+ plushEllipse(0,0,58,54,.04,23);
+ // Subtle cheek/side-face turns the rear view into a readable 3/4 view.
+ ellipse(44,19,18,20,'#d99466',-.3);
+ ellipse(48,6,4,5,'#392b27');
+ ellipse(57,23,5,4,'#5c3425');
+ ellipse(38,31,10,4,'#f0b583',-.1);
  ctx.restore();
 }
 function pose(t){
@@ -112,13 +168,13 @@ function draw(t){
  time=t;ctx.clearRect(0,0,360,520);const p=pose(t);
  // Legs behind torso; feet anchored to exact hold coordinates.
  for(const [side,hip,knee,foot] of [['L',p.hipL,p.kneeL,contacts.lf],['R',p.hipR,p.kneeR,contacts.rf]]){
-   limb(hip,knee,'#a9622f','#f5bb7b',33);ellipse(knee.x,knee.y,17,17,fur(knee.x,knee.y,19));
-   limb(knee,foot,'#b8733e','#e7a16e',28);paw(foot,true);
+   limb(hip,knee,'#a9622f','#f5bb7b',39);plushEllipse(knee.x,knee.y,18,19,0,3);
+   limb(knee,foot,'#b8733e','#e7a16e',33);paw(foot,true);
  }
  // Arms below torso so shoulder seams remain covered; IK elbows visibly bend.
  for(const [shoulder,elbow,hand] of [[p.shoulderL,p.elbowL,contacts.lh],[p.shoulderR,p.elbowR,contacts.rh]]){
-   limb(shoulder,elbow,'#b36c37','#f0b079',29);ellipse(elbow.x,elbow.y,15,15,fur(elbow.x,elbow.y,19));
-   limb(elbow,hand,'#b97641','#efb584',25);
+   limb(shoulder,elbow,'#b36c37','#f0b079',37);plushEllipse(elbow.x,elbow.y,18,18,0,6);
+   limb(elbow,hand,'#b97641','#efb584',31);
  }
  torso(point(p.cx,p.cy),-.04*p.load+.035*p.settle);
  head(point(p.cx+3,p.cy-70),-.035*p.load+.045*p.pull);
